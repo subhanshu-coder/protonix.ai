@@ -1,0 +1,143 @@
+/* src/components/ScrollVelocity.css */
+
+.parallax {
+  position: relative;
+  overflow: hidden;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  margin: 0.8rem 0; /* FIXED: Added small gap between rows */
+  padding: 0 6px;
+  box-sizing: border-box;
+  /* FIXED: Much lighter blue background */
+  background: rgba(59, 130, 246, 0.8);
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.parallax::before{
+  content:'';
+  position:absolute; inset:0;
+  pointer-events:none;
+  box-shadow: inset 0 0 0 1px rgba(59,130,246,.07); /* very subtle */
+}
+
+.scroller {
+  margin: 0;
+
+  display: flex;
+  white-space: nowrap;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  /* FIXED: Small letter spacing for slight gaps between words */
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  /* FIXED: Blue text instead of white for better visibility */
+  color: #2563eb;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  padding: 12px 0;
+}
+
+.scroller span {
+  flex-shrink: 0;
+  display: inline-block;
+  /* FIXED: Very small margin for tiny gaps between sentences */
+  margin-right: 0.3em;
+}
+
+/* Responsive adjustments */
+@media (min-width: 1200px) {
+  .scroller {
+    font-size: 1.2rem;
+    line-height: 1.2rem;
+    padding: 15px 0;
+  }
+  
+  .parallax {
+    height: 60px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .scroller {
+    font-size: 1.1rem;
+    line-height: 1.1rem;
+    padding: 14px 0;
+  }
+  
+  .parallax {
+    height: 55px;
+  }
+}
+
+@media (max-width: 767px) {
+  .scroller {
+    font-size: 0.9rem;
+    line-height: 0.9rem;
+    padding: 12px 0;
+  }
+  
+  .parallax {
+    height: 45px;
+  }
+  
+  .scroller span {
+    margin-right: 0.2em;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroller {
+    font-size: 0.8rem;
+    line-height: 0.8rem;
+    padding: 10px 0;
+  }
+  
+  .parallax {
+    height: 40px;
+  }
+  
+  .scroller span {
+    margin-right: 0.15em;
+  }
+}
+
+@media (max-width: 320px) {
+  .scroller {
+    font-size: 0.7rem;
+    line-height: 0.7rem;
+    padding: 8px 0;
+  }
+  
+  .parallax {
+    height: 35px;
+  }
+  
+  .scroller span {
+    margin-right: 0.1em;
+  }
+}
+
+/* Performance optimizations */
+.parallax {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+.scroller {
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .scroller {
+    animation: none;
+  }
+}
