@@ -12,6 +12,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
+
   "dependencies": {
     "@barba/core": "^2.10.3",
     "@react-three/drei": "^10.6.1",
