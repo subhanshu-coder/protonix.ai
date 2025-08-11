@@ -1,13 +1,34 @@
-# React + Vite
+# Protonix.AI - Advanced AI ChatBot Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
+Protonix.AI is a modern React-based AI ChatBot application that provides a unified platform for accessing multiple AI models. Built with cutting-edge technologies and featuring a professional user interface.
 
-Currently, two official plugins are available:
+## Features
+- Ì¥ñ **LoginPage**: Professional authentication with SVG logo integration
+- Ì≥ä **Dashboard**: User management with statistics and quick actions  
+- ÌæØ **CardSwap**: Animated cards showcasing AI features
+- Ìæ® **PixelCard**: Mission/vision/values with animated pixel effects
+- Ì≥± **Responsive Design**: Mobile-optimized with glassmorphism effects
+- Ì¥í **Authentication Flow**: Complete sign in/sign up with dashboard redirect
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tech Stack
+- **Frontend**: React.js with Vite
+- **Styling**: Modern CSS with glassmorphism effects
+- **Animations**: GSAP-powered card transitions
+- **Routing**: React Router DOM
+- **Deployment**: GitHub Pages ready
 
-## Expanding the ESLint configuration
+## Quick Start
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# protonix.ai
+## Deployment
+```bash
+npm run build
+npm run deploy
+```
+
+---
+Built with ‚ù§Ô∏è by [Subhanshu](https://github.com/subhanshu-coder)
