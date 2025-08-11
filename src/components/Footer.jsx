@@ -140,7 +140,7 @@ const Footer = () => {
             viewport={{ once: true }}
           >
             <div className="brand-logo">
-              <h2>AI Hub</h2>
+              <h2> PROTONIX.AI</h2>
               <span className="brand-tagline">✨ Unifying AI Power</span>
             </div>
             <p className="brand-description">
@@ -207,7 +207,7 @@ const Footer = () => {
         >
           <div className="footer-bottom-content">
             <p className="copyright">
-              © 2024 AI Hub. All rights reserved. Made with ❤️ for the AI community.
+              © 2025 protonix.ai. All rights reserved by subhanshu pal. Made with ❤️ for the AI community.
             </p>
             <div className="footer-meta">
               <span className="version">v2.1.0</span>

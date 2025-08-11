@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// ✅ CORRECT - All imports fixed
+// ✅ All component imports including Dashboard
 import ModernNav from './components/ModernNav';
 import Silk from './components/Silk';
 import Home from './components/Home';
@@ -14,9 +14,9 @@ import FAQs from './components/FAQs';
 import GetInTouch from './components/GetInTouch';
 import Footer from './components/Footer';
 import LoginPage from './components/LoginPage';
-import Dashboard from './components/Dashboard';
+import Dashboard from './components/Dashboard'; // ✅ Dashboard import added
 
-// ✅ CORRECT - Asset imports
+// Asset imports
 import gptLogo from './assets/logos/gpt.png';
 import grokLogo from './assets/logos/grok.png';
 import perplexityLogo from './assets/logos/perplexity.png';
@@ -26,18 +26,17 @@ import geminiLogo from './assets/logos/gemini.png';
 
 import './App.css';
 
-
-// Landing Page Component (your current main content)
+// Landing Page Component
 const LandingPage = () => {
   const [activeSection, setActiveSection] = useState('home');
 
   const navItems = [
-    { label: "Home", href: "#home" },
+    { label: "Home", href: "#home", isGhost: true },
     { label: "Features", href: "#features", isGhost: true },
     { label: "About", href: "#about", isGhost: true },
     { label: "HowItWork", href: "#HowItWorks", isGhost: true },
     { label: "FAQs", href: "#FAQs", isGhost: true },
-    { label: "Login", href: "/login", isGhost: true, isLink: true }, // Changed to route link
+    { label: "Login", href: "/login", isGhost: true, isLink: true },
   ];
 
   useEffect(() => {
@@ -139,7 +138,7 @@ const LandingPage = () => {
         <Silk
           speed={5}
           scale={1}
-          color="#9908e1ff"
+          color="#3494d8ff"
           noiseIntensity={1.5}
           rotation={0}
         />
@@ -148,7 +147,7 @@ const LandingPage = () => {
       <div className="navbar-wrapper">
         <ModernNav
           items={navItems}
-          logoText="AI Hub"
+          logoText="PROTONIX.AI"
           activeSection={activeSection}
         />
       </div>
@@ -167,7 +166,7 @@ const LandingPage = () => {
         <SlidingLogoMarquee
           items={logos}
           speed={60}
-          backgroundColor={"rgba(106, 173, 227, 0.5)"}
+          backgroundColor={"rgba(95, 173, 236, 0.5)"}
           pauseOnHover={true}
           width="90%"
           height="180px"
@@ -179,7 +178,6 @@ const LandingPage = () => {
           className="marquee-special-bg"
         />
 
-        {/* PixelCard with animated pixel background including mission/vision/values content */}
         <PixelCard variant="blue" className="about-pixel-card" />
 
         <HowItWorks />
@@ -199,7 +197,7 @@ const LandingPage = () => {
   );
 };
 
-// Main App Component with Authentication
+// Main App Component with Complete Authentication Flow
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -244,9 +242,26 @@ function App() {
   // Show loading spinner while checking auth status
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>Loading AI Hub...</p>
+      <div className="loading-screen" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
+        color: 'white',
+        fontFamily: 'Inter, sans-serif'
+      }}>
+        <div className="loading-spinner" style={{
+          width: '40px',
+          height: '40px',
+          border: '4px solid rgba(255, 255, 255, 0.3)',
+          borderTop: '4px solid #6366f1',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '20px'
+        }}></div>
+        <p style={{ fontSize: '1.1rem', opacity: 0.8 }}>Loading AI Hub...</p>
       </div>
     );
   }
@@ -262,7 +277,8 @@ function App() {
           element={
             !isAuthenticated ? (
               <LoginPage onLogin={handleLogin} />
-            ) : (
+            ) : 
+            (
               <Navigate to="/dashboard" replace />
             )
           } 

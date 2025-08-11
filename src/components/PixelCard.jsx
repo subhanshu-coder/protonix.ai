@@ -359,7 +359,7 @@ export default function PixelCard() {
   return (
     <div className="pixel-cards-container">
       <div className="section-header">
-        <h2 className="main-title">Behind The AI Hub</h2>
+        <h3 className="main-title">Behind The AI HUB</h3>
         <p className="section-subtitle">Discover the vision, technology, and passion driving this project</p>
       </div>
       <div className="cards-grid staggered-layout">
