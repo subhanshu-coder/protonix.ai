@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// ✅ All component imports including Dashboard
+// ✅ All component imports
 import ModernNav from './components/ModernNav';
 import Silk from './components/Silk';
 import Home from './components/Home';
@@ -14,7 +14,7 @@ import FAQs from './components/FAQs';
 import GetInTouch from './components/GetInTouch';
 import Footer from './components/Footer';
 import LoginPage from './components/LoginPage';
-import Dashboard from './components/Dashboard'; // ✅ Dashboard import added
+import Dashboard from './components/Dashboard';
 
 // Asset imports
 import gptLogo from './assets/logos/gpt.png';
@@ -26,12 +26,12 @@ import geminiLogo from './assets/logos/gemini.png';
 
 import './App.css';
 
-// Landing Page Component
+// Landing Page Component with Sky Blue Accents
 const LandingPage = () => {
   const [activeSection, setActiveSection] = useState('home');
 
   const navItems = [
-    { label: "Home", href: "#home", isGhost: true },
+    { label: "Home", href: "#home" },
     { label: "Features", href: "#features", isGhost: true },
     { label: "About", href: "#about", isGhost: true },
     { label: "HowItWork", href: "#HowItWorks", isGhost: true },
@@ -61,6 +61,7 @@ const LandingPage = () => {
           featuresEl.classList.add('visible');
         }
       }
+      
       const aboutEl = document.getElementById('about');
       if (aboutEl) {
         const rect = aboutEl.getBoundingClientRect();
@@ -74,14 +75,20 @@ const LandingPage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Logos for SlidingLogoMarquee
+  // Logos for SlidingLogoMarquee with Sky Blue text shadows
   const logos = [
     {
       id: 'grok',
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={grokLogo} alt="Grok" style={{ height: 100 }} />
-          <span style={{ color: 'white', marginTop: 6, fontSize: '1.5rem', fontWeight: 600 }}>Grok</span>
+          <span style={{ 
+            color: 'white', 
+            marginTop: 6, 
+            fontSize: '1.5rem', 
+            fontWeight: 600,
+            textShadow: '0 2px 10px rgba(135, 206, 235, 0.4)' 
+          }}>Grok</span>
         </div>
       ),
     },
@@ -90,7 +97,13 @@ const LandingPage = () => {
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={perplexityLogo} alt="Perplexity" style={{ height: 100 }} />
-          <span style={{ color: 'white', fontSize: '1.5rem', marginTop: 6, fontWeight: 600 }}>Perplexity</span>
+          <span style={{ 
+            color: 'white', 
+            fontSize: '1.5rem', 
+            marginTop: 6, 
+            fontWeight: 600,
+            textShadow: '0 2px 10px rgba(0, 191, 255, 0.4)' 
+          }}>Perplexity</span>
         </div>
       ),
     },
@@ -99,7 +112,13 @@ const LandingPage = () => {
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={gptLogo} alt="ChatGPT" style={{ height: 100 }} />
-          <span style={{ color: 'white', marginTop: 6, fontSize: '1.5rem', fontWeight: 600 }}>ChatGPT</span>
+          <span style={{ 
+            color: 'white', 
+            marginTop: 6, 
+            fontSize: '1.5rem', 
+            fontWeight: 600,
+            textShadow: '0 2px 10px rgba(135, 206, 235, 0.4)' 
+          }}>ChatGPT</span>
         </div>
       ),
     },
@@ -108,7 +127,13 @@ const LandingPage = () => {
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={claudeLogo} alt="Claude" style={{ height: 100 }} />
-          <span style={{ color: 'white', marginTop: 6, fontSize: '1.5rem', fontWeight: 600 }}>Claude</span>
+          <span style={{ 
+            color: 'white', 
+            marginTop: 6, 
+            fontSize: '1.5rem', 
+            fontWeight: 600,
+            textShadow: '0 2px 10px rgba(176, 224, 230, 0.4)' 
+          }}>Claude</span>
         </div>
       ),
     },
@@ -117,7 +142,13 @@ const LandingPage = () => {
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={geminiLogo} alt="Gemini" style={{ height: 100 }} />
-          <span style={{ color: 'white', marginTop: 6, fontSize: '1.5rem', fontWeight: 600 }}>Gemini</span>
+          <span style={{ 
+            color: 'white', 
+            marginTop: 6, 
+            fontSize: '1.5rem', 
+            fontWeight: 600,
+            textShadow: '0 2px 10px rgba(0, 191, 255, 0.4)' 
+          }}>Gemini</span>
         </div>
       ),
     },
@@ -126,7 +157,13 @@ const LandingPage = () => {
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={deepseekLogo} alt="DeepSeek" style={{ height: 100 }} />
-          <span style={{ color: 'white', fontSize: '1.5rem', marginTop: 6, fontWeight: 600 }}>DeepSeek</span>
+          <span style={{ 
+            color: 'white', 
+            fontSize: '1.5rem', 
+            marginTop: 6, 
+            fontWeight: 600,
+            textShadow: '0 2px 10px rgba(135, 206, 235, 0.4)' 
+          }}>DeepSeek</span>
         </div>
       ),
     },
@@ -134,39 +171,52 @@ const LandingPage = () => {
 
   return (
     <div className="app-container">
+      {/* Background Canvas */}
       <div className="background-canvas">
         <Silk
           speed={5}
           scale={1}
-          color="#3494d8ff"
+          color="3494d8ff"
           noiseIntensity={1.5}
           rotation={0}
         />
       </div>
 
+      {/* Navigation */}
       <div className="navbar-wrapper">
         <ModernNav
           items={navItems}
-          logoText="PROTONIX.AI"
+          logoText="Protonix.AI"
           activeSection={activeSection}
         />
       </div>
 
+      {/* Main Content */}
       <main>
         <Home />
         <Features />
+        
         <section id="about">
           <About />
         </section>
 
+        {/* Marquee Section with Sky Blue Enhancement */}
         <div className="marquee-special-container">
-          <h2 className="marquee-title">Integration of Top AI's in Market</h2>
+          <h2 className="marquee-title" style={{
+            background: 'linear-gradient(135deg, #fff 0%, rgba(135, 206, 235, 1.0) 50%, #a5b4fc 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            textShadow: 'none'
+          }}>
+            Integration of Top AI's in Market
+          </h2>
         </div>
 
         <SlidingLogoMarquee
           items={logos}
           speed={60}
-          backgroundColor={"rgba(95, 173, 236, 0.5)"}
+          backgroundColor={"rgba(135, 206, 235, 0.3)"}
           pauseOnHover={true}
           width="90%"
           height="180px"
@@ -178,9 +228,10 @@ const LandingPage = () => {
           className="marquee-special-bg"
         />
 
-        <PixelCard variant="blue" className="about-pixel-card" />
-
+        <PixelCard variant="skyblue" className="about-pixel-card" />
+        
         <HowItWorks />
+        
         <section id="FAQs">
           <FAQs />
         </section> 
@@ -197,7 +248,7 @@ const LandingPage = () => {
   );
 };
 
-// Main App Component with Complete Authentication Flow
+// Main App Component with Complete Authentication and GitHub Pages Support
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -206,27 +257,40 @@ function App() {
   // Check if user is already logged in on app load
   useEffect(() => {
     const checkAuthStatus = () => {
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
-      
-      if (token && userData) {
-        setIsAuthenticated(true);
-        setUser(JSON.parse(userData));
+      try {
+        const token = localStorage.getItem('authToken');
+        const userData = localStorage.getItem('userData');
+        
+        if (token && userData) {
+          const parsedUser = JSON.parse(userData);
+          setIsAuthenticated(true);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        // Clear corrupted data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkAuthStatus();
   }, []);
 
   const handleLogin = (userData, token) => {
-    // Store authentication data
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('userData', JSON.stringify(userData));
-    
-    // Update state
-    setIsAuthenticated(true);
-    setUser(userData);
+    try {
+      // Store authentication data
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userData', JSON.stringify(userData));
+      
+      // Update state
+      setIsAuthenticated(true);
+      setUser(userData);
+    } catch (error) {
+      console.error('Error saving user data:', error);
+    }
   };
 
   const handleLogout = () => {
@@ -248,26 +312,56 @@ function App() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
+        background: 'linear-gradient(135deg, #0f0f23 0%, rgba(135, 206, 235, 0.1) 25%, #1a1a2e 50%, rgba(0, 191, 255, 0.1) 75%, #16213e 100%)',
         color: 'white',
         fontFamily: 'Inter, sans-serif'
       }}>
         <div className="loading-spinner" style={{
-          width: '40px',
-          height: '40px',
-          border: '4px solid rgba(255, 255, 255, 0.3)',
-          borderTop: '4px solid #6366f1',
+          width: '50px',
+          height: '50px',
+          border: '4px solid rgba(135, 206, 235, 0.3)',
+          borderTop: '4px solid rgba(135, 206, 235, 1.0)',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
-          marginBottom: '20px'
+          marginBottom: '25px'
         }}></div>
-        <p style={{ fontSize: '1.1rem', opacity: 0.8 }}>Loading AI Hub...</p>
+        
+        <h2 style={{ 
+          fontSize: '1.4rem', 
+          marginBottom: '10px',
+          background: 'linear-gradient(135deg, #fff 0%, rgba(135, 206, 235, 1.0) 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
+        }}>
+          Loading Protonix.AI...
+        </h2>
+        
+        <p style={{ 
+          fontSize: '1rem', 
+          opacity: 0.8,
+          color: 'rgba(135, 206, 235, 0.8)'
+        }}>
+          Initializing your AI workspace
+        </p>
+        
+        <style>
+          {`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}
+        </style>
       </div>
     );
   }
 
+  // ✅ CRITICAL FIX: Proper basename for GitHub Pages deployment
+  const basename = window.location.hostname === 'localhost' ? '/' : '/protonix.ai';
+
   return (
-    <Router>
+    <Router basename={basename}>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
@@ -296,7 +390,7 @@ function App() {
           } 
         />
         
-        {/* Fallback route */}
+        {/* Fallback route - redirects unknown paths to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
