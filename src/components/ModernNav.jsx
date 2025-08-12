@@ -1,5 +1,6 @@
 // src/components/ModernNav.jsx
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './ModernNav.css';
 
 const ModernNav = ({ items, logoText, activeSection }) => {
@@ -32,6 +33,9 @@ const ModernNav = ({ items, logoText, activeSection }) => {
                 {item.label}
               </a>
             </li>
+            <Link to="/login" className="nav-link">
+  Login
+</Link>
           );
         })}
       </ul>
