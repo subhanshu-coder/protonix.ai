@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
-// import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-      
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // ✅ All component imports
 import ModernNav from './components/ModernNav';
@@ -361,19 +358,43 @@ function App() {
   }
 
   // ✅ CRITICAL FIX: Proper basename for GitHub Pages deployment
-  
+  const basename = window.location.hostname === 'localhost' ? '/' : '/protonix.ai';
 
-const basename = undefined;           
+  return (
+    <Router basename={basename}>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
+        
+        <Route 
+          path="/Login" 
+          element={
+            !isAuthenticated ? (
+              <LoginPage onLogin={handleLogin} />
+            ) : 
+            (
+              <Navigate to="/dashboard" replace />
+            )
+          } 
+        />
+        
+        {/* Protected Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            isAuthenticated ? (
+              <Dashboard user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+        
+        {/* Fallback route - redirects unknown paths to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  );
+}
 
-  
-   return (
-  <Router>
-    <Routes>
-      <Route path="/"          element={<LandingPage />} />
-      <Route path="/login"     element={!isAuthenticated ? <LoginPage onLogin={handleLogin}/> : <Navigate to="/dashboard" replace />} />
-      <Route path="/dashboard" element={ isAuthenticated ? <Dashboard user={user} onLogout={handleLogout}/> : <Navigate to="/login" replace />} />
-      <Route path="*"          element={<Navigate to="/" replace />} />
-    </Routes>
-  </Router>
-)
 export default App;
