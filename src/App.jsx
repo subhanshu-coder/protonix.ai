@@ -31,7 +31,7 @@ const LandingPage = () => {
   const [activeSection, setActiveSection] = useState('home');
 
   const navItems = [
-    { label: "Home", href: "#home" },
+    { label: "Home", href: "#home", isGhost: true, isLink: true },
     { label: "Features", href: "#features", isGhost: true },
     { label: "About", href: "#about", isGhost: true },
     { label: "HowItWork", href: "#HowItWorks", isGhost: true },
