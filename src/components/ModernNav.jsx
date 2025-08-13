@@ -1,5 +1,9 @@
 import { useState } from 'react';
+<<<<<<< HEAD
 import { Link, useLocation } from 'react-router-dom';
+=======
+import { Link } from 'react-router-dom';
+>>>>>>> 6950faf858abf87042f4867c92fca40c2acc953a
 import './ModernNav.css';
 
 const ModernNav = ({ items, logoText, activeSection }) => {
@@ -63,6 +67,9 @@ const ModernNav = ({ items, logoText, activeSection }) => {
                 </button>
               )}
             </li>
+            <Link to="/login" className="nav-link">
+  Login
+</Link>
           );
         })}
       </ul>
