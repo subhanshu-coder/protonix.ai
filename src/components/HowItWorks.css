@@ -500,14 +500,14 @@
         gap: 1rem;
         padding: 0 1rem;
         width: 100%;
-        max-width: 100px;
+        max-width: 200px;
     }
 
       .primary-cta-button-enhanced,
     .secondary-cta-button-enhanced {
         width: 100%;
-        max-width: 320px;
-        min-width: auto;
+        max-width: 350px;
+        min-width: auto;  
         padding: 1rem 2rem;
         font-size: 1rem;
     }

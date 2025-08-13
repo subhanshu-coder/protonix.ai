@@ -1,0 +1,16 @@
+<!DOCTYPE html><html><head>
+  <meta charset="utf-8" />
+  <title>Protonix.AI</title>
+  <script>
+    /* Redirect every unknown path back to index.html */
+    var keep = 1;                       // 1 = keep “protonix.ai”
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.hostname +
+      (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, keep + 1).join('/') + '/#' +
+      l.pathname.slice(1).split('/').slice(keep).join('/') +
+      l.search + l.hash
+    );
+  </script>
+</head><body></body></html>

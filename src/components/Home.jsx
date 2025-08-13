@@ -15,7 +15,7 @@ import deepseekLogo from '../assets/logos/deepseek.png';
 import ImageTrailEffect from './ImageTrailEffect';
 
 const animatedBoxesData = [
-  { title: "🤖 15+ AI Models" },
+  { title: "🤖 5+ AI Models" },
   { title: "⚡ Instant Switch" },
   { title: "🔒 100% Secure" }
 ];
