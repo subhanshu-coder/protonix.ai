@@ -1,7 +1,7 @@
 {
   "name": "protonix-ai-chatbot",
   "version": "0.1.0",
-  "homepage": "https://github.com/subhanshu-coder/protonix.ai",
+
   "private": true,
   "type": "module",
   "scripts": {
