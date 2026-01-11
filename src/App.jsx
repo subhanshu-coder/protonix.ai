@@ -159,12 +159,12 @@ const LandingPage = () => {
           <img src={deepseekLogo} alt="DeepSeek" style={{ height: 100 }} />
           <span style={{ 
             color: 'white', 
-            fontSize: '1.5rem', 
+            fontSize: '1.5rem',                                 
             marginTop: 6, 
-            fontWeight: 600,
-            textShadow: '0 2px 10px rgba(135, 206, 235, 0.4)' 
+            fontWeight: 600,                                                                                                                  
+            textShadow: '0 2px 10px rgba(135, 206, 235, 0.4)'                                              
           }}>DeepSeek</span>
-        </div>
+        </div>                                                                                                                                           
       ),
     },
   ];
@@ -330,7 +330,6 @@ function App() {
           fontSize: '1.4rem', 
           marginBottom: '10px',
           background: 'linear-gradient(135deg, #fff 0%, rgba(135, 206, 235, 1.0) 100%)',
-          WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
         }}>
@@ -348,41 +347,42 @@ function App() {
         <style>
           {`
             @keyframes spin {
+              WebkitBackgroundClip: 'text';
               0% { transform: rotate(0deg); }
               100% { transform: rotate(360deg); }
-            }
-          `}
+              }
+              `}
         </style>
-      </div>
-    );
-  }
-
-  // ✅ CRITICAL FIX: Proper basename for GitHub Pages deployment
-  const basename = window.location.hostname === 'localhost' ? '/' : '/protonix.ai';
-
-  return (
-    <Router basename={basename}>
-      <Routes>
+        </div>
+      );
+    }
+    
+    // ✅ CRITICAL FIX: Proper basename for GitHub Pages deployment
+    const basename = window.location.hostname === 'localhost' ? '/' : '/protonix.ai';
+    
+    return (
+      <Router basename={basename}>
+        <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         
         <Route 
-          path="/Login" 
-          element={
-            !isAuthenticated ? (
-              <LoginPage onLogin={handleLogin} />
-            ) : 
-            (
-              <Navigate to="/dashboard" replace />
+        path="/Login" 
+        element={
+        !isAuthenticated ? (
+            <LoginPage onLogin={handleLogin} />
+        ) : 
+        (
+          <Navigate to="/dashboard" replace />
             )
           } 
-        />
-        
-        {/* Protected Routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            isAuthenticated ? (
+          />
+          
+            {/* Protected Routes */}
+            <Route 
+            path="/dashboard" 
+            element={
+              isAuthenticated ? (
               <Dashboard user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/Login" replace />
