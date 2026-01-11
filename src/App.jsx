@@ -15,6 +15,7 @@ import GetInTouch from './components/GetInTouch';
 import Footer from './components/Footer';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
+import LandingPage from './components/LandingPage';
 
 // Asset imports
 import gptLogo from './assets/logos/gpt.png';
