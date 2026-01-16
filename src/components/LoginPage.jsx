@@ -26,35 +26,57 @@ const LoginPage = ({ onLogin }) => {
     if (error) setError('');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+  //   setError('');
     
-    try {
-      setTimeout(() => {
-        setIsLoading(false);
-        const mockUser = {
-          id: '1',
-          name: formData.fullName || 'AI User',
-          email: formData.email,
-          avatar: '👨‍💻'
-        };
+  //   try {
+  //     setTimeout(() => {
+  //       setIsLoading(false);
+  //       const mockUser = {
+  //         id: '1',
+  //         name: formData.fullName || 'AI User',
+  //         email: formData.email,
+  //         avatar: '👨‍💻'
+  //       };
         
-        if (onLogin) {
-          onLogin(mockUser, 'mock-token-' + Date.now());
-        }
+  //       if (onLogin) {
+  //         onLogin(mockUser, 'mock-token-' + Date.now());
+  //       }
         
-        if (navigate) {
-          navigate('/dashboard');
-        }
-      }, 1500);
-    } catch (error) {
-      console.error('Auth error:', error);
-      setError('Something went wrong. Please try again.');
-      setIsLoading(false);
+  //       if (navigate) {
+  //         navigate('/dashboard');
+  //       }
+  //     }, 1500);
+  //   } catch (error) {
+  //     console.error('Auth error:', error);
+  //     setError('Something went wrong. Please try again.');
+  //     setIsLoading(false);
+  //   }
+  // };
+
+// LoginPage.jsx snippet
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  
+  // Simulate successful login/Google Auth
+  setTimeout(() => {
+    const mockUser = {
+      id: '1',
+      name: formData.fullName || 'AI User',
+      email: formData.email,
+    };
+    
+    if (onLogin) {
+      onLogin(mockUser);
+      // Change this from '/' or '/dashboard' to '/chat'
+      navigate('/chat'); 
     }
-  };
+    setIsLoading(false);
+  }, 1500);
+};
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);

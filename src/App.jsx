@@ -3,12 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 // ✅ All component imports
 import LoginPage from './components/LoginPage';
-import Dashboard from './components/Dashboard';
+import ChatPage from './components/ChatPage'; // Renamed from Dashboard to ChatPage for your workspace
 import LandingPage from './components/LandingPage';
 
-import './App.css';
+import './App.css'; //
 
-// Main App Component with Complete Authentication and GitHub Pages Support
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -61,6 +60,7 @@ function App() {
     // Update state
     setIsAuthenticated(false);
     setUser(null);
+    // Note: Navigation to home happens inside ChatPage via useNavigate() after calling this
   };
 
   // Show loading spinner while checking auth status
@@ -85,64 +85,38 @@ function App() {
           animation: 'spin 1s linear infinite',
           marginBottom: '25px'
         }}></div>
-        
-        <h2 style={{ 
-          fontSize: '1.4rem', 
-          marginBottom: '10px',
-          background: 'linear-gradient(135deg, #fff 0%, rgba(135, 206, 235, 1.0) 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text'
-        }}>
-          Loading Protonix.AI...
-        </h2>
-        
-        <p style={{ 
-          fontSize: '1rem', 
-          opacity: 0.8,
-          color: 'rgba(135, 206, 235, 0.8)'
-        }}>
-          Initializing your AI workspace
-        </p>
-        
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
+        <h2 style={{ fontSize: '1.4rem', marginBottom: '10px', color: '#fff' }}>Loading Protonix.AI...</h2>
       </div>
     );
   }
   
-  // ✅ CRITICAL FIX: Proper basename for GitHub Pages deployment
+  // Basename for GitHub Pages support
   const basename = window.location.hostname === 'localhost' ? '/' : '/protonix.ai';
   
   return (
     <Router basename={basename}>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Landing Page */}
         <Route path="/" element={<LandingPage />} />
         
+        {/* Login: Opens first, then redirects to /chat */}
         <Route 
           path="/login" 
           element={
             !isAuthenticated ? (
               <LoginPage onLogin={handleLogin} />
             ) : (
-              <Navigate to="/dashboard" replace />
+              <Navigate to="/chat" replace /> // Redirects to Chat chatbot page after login
             )
           } 
         />
         
-        {/* Protected Routes */}
+        {/* Protected Chat Route: Only accessible if authenticated */}
         <Route 
-          path="/dashboard" 
+          path="/chat" 
           element={
             isAuthenticated ? (
-              <Dashboard user={user} onLogout={handleLogout} />
+              <ChatPage user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -156,4 +130,4 @@ function App() {
   );
 }
 
-export default App;
+export default App; //
