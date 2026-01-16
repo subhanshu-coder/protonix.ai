@@ -4,14 +4,13 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Use '/' for Vercel unless you are specifically using a sub-path like /my-app/
-  base: '/', 
+  // CHANGE THIS: Add your repository name between slashes
+  base: '/protonix.ai/', 
   build: {
     outDir: 'dist',
     sourcemap: false,
     rollupOptions: {
       output: {
-        // Cleaning up manualChunks for standard deployments
         manualChunks: undefined,
       },
     },
