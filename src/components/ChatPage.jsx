@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Send, Settings, Menu, User, 
-  Mic, MicOff, MessageSquare, X, Wand2, LogOut, Loader2
+  Mic, MicOff, MessageSquare, X, Wand2, LogOut, Loader2, 
+  ArrowDown 
 } from 'lucide-react';
 
 // Local Asset Imports
@@ -15,19 +16,20 @@ import grokLogo from '../assets/logos/grok.png';
 
 const ChatPage = ({ user, onLogout }) => {
   const navigate = useNavigate();
+  
+  // State
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  
   const [selectedBot, setSelectedBot] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   
-  // Voice & Audio State
   const [isListening, setIsListening] = useState(false);
   const [volume, setVolume] = useState(0);
   const [chatHistory, setChatHistory] = useState([]);
-
-  // ✅ NEW: Purify State
   const [isPurifying, setIsPurifying] = useState(false);
 
   // Refs
@@ -35,6 +37,7 @@ const ChatPage = ({ user, onLogout }) => {
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
   const isListeningRef = useRef(false);
   const textRef = useRef('');
   const silenceTimer = useRef(null);
@@ -49,140 +52,99 @@ const ChatPage = ({ user, onLogout }) => {
     { id: 'grok', name: 'Grok', logo: grokLogo, accent: '#ffffff' }
   ];
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    isListeningRef.current = isListening;
-  }, [isListening]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [inputMessage]);
-
-  // --- VOICE LOGIC (Same as before) ---
-  const handleVoiceToggle = async () => {
-    if (isListening) {
-      if (silenceTimer.current) clearTimeout(silenceTimer.current);
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Your browser does not support voice input.");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
-      
-      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-      const updateVisualizer = () => {
-        if (!analyserRef.current || !isListeningRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setVolume(avg);
-        requestAnimationFrame(updateVisualizer);
-      };
-
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-
-      recognitionRef.current.onstart = () => {
-        setIsListening(true);
-        isListeningRef.current = true; 
-        textRef.current = inputMessage; 
-        updateVisualizer(); 
-      };
-
-      recognitionRef.current.onresult = (e) => {
-        if (silenceTimer.current) clearTimeout(silenceTimer.current);
-        silenceTimer.current = setTimeout(() => {
-          recognitionRef.current.stop();
-        }, 2500);
-
-        const currentTranscript = Array.from(e.results)
-          .map(result => result[0].transcript)
-          .join('');
-
-        const prefix = textRef.current;
-        const spacing = prefix && !prefix.endsWith(' ') ? ' ' : '';
-        setInputMessage(prefix + spacing + currentTranscript);
-      };
-
-      recognitionRef.current.onend = () => {
-        if (silenceTimer.current) clearTimeout(silenceTimer.current);
-        setIsListening(false);
-        isListeningRef.current = false; 
-        setVolume(0);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      recognitionRef.current.start();
-
-    } catch (err) {
-      console.error("Mic access denied:", err);
-      setIsListening(false);
+  // Scroll Logic
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 150);
     }
   };
 
-  // --- ✅ NEW: PROMPT PURIFIER LOGIC ---
-  const handlePurify = async () => {
-    if (!inputMessage.trim()) return;
-    
-    setIsPurifying(true);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    // 1. SIMULATED DELAY (To look like AI is thinking)
-    await new Promise(r => setTimeout(r, 800));
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-    // 2. LOGIC: Here you would ideally call your Backend API:
-    // const response = await fetch('/api/purify', { body: { text: inputMessage } });
-    // const newText = await response.text();
-
-    // 3. MOCK LOGIC (For now, use basic rules to demonstrate)
-    let optimized = inputMessage.trim();
-    
-    // Rule A: Capitalize First Letter
-    optimized = optimized.charAt(0).toUpperCase() + optimized.slice(1);
-    
-    // Rule B: Add Punctuation if missing
-    if (!/[.?!]$/.test(optimized)) {
-      optimized += "?"; // Assume question by default
+  // CSS Styles
+  const styles = `
+    .bot-grid-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 900px;
+      margin: 0 auto;
     }
 
-    // Rule C: Heuristic Enhancements (The "Best Prompt" logic)
-    const lower = optimized.toLowerCase();
-    
-    if (lower.includes("code") || lower.includes("script") || lower.includes("function")) {
-       optimized = `Act as an expert Senior Developer. ${optimized} Please ensure the code is clean, efficient, and well-commented.`;
-    } else if (lower.includes("explain") || lower.includes("what is")) {
-       optimized = `Provide a clear, comprehensive explanation of the following concept: "${optimized}". Use analogies if helpful.`;
-    } else if (lower.includes("image") || lower.includes("picture")) {
-       optimized = `Generate a highly detailed prompt for an image generation model based on: "${optimized}". Include lighting, style, and composition details.`;
-    } else {
-      // General Grammar Fix Wrapper
-      optimized = `Rephrase and optimize the following request for clarity and precision: "${optimized}"`;
+    .chat-scroll-container::-webkit-scrollbar { width: 6px; display: block; }
+    .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-scroll-container::-webkit-scrollbar-thumb {
+      background-color: ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'};
+      border-radius: 10px;
+    }
+    .chat-scroll-container::-webkit-scrollbar-thumb:hover {
+      background-color: ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'};
     }
 
-    setInputMessage(optimized);
-    setIsPurifying(false);
+    textarea::-webkit-scrollbar { width: 4px; }
+    textarea::-webkit-scrollbar-thumb {
+      background-color: ${isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'};
+      border-radius: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 45; }
+      .sidebar-container { position: fixed !important; inset: 0 auto 0 0 !important; width: 85% !important; z-index: 50 !important; transform: translateX(-100%); transition: transform 0.3s ease !important; }
+      .sidebar-container.open { transform: translateX(0) !important; }
+      .bot-grid-container { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 10px; }
+      .bot-card { padding: 15px !important; min-height: 100px; }
+    }
+  `;
+
+  useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
+  useEffect(() => { 
+    if (textareaRef.current) { 
+      textareaRef.current.style.height = 'auto'; 
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`; 
+    } 
+  }, [inputMessage]);
+
+  const handleVoiceToggle = async () => { 
+      if (isListening) { if (silenceTimer.current) clearTimeout(silenceTimer.current); recognitionRef.current?.stop(); setIsListening(false); return; }
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        analyserRef.current = audioContextRef.current.createAnalyser();
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        source.connect(analyserRef.current);
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        const updateVisualizer = () => { if (!analyserRef.current || !isListeningRef.current) return; analyserRef.current.getByteFrequencyData(dataArray); setVolume(dataArray.reduce((a, b) => a + b) / dataArray.length); requestAnimationFrame(updateVisualizer); };
+        recognitionRef.current = new SpeechRecognition(); recognitionRef.current.continuous = true; recognitionRef.current.interimResults = true;
+        recognitionRef.current.onstart = () => { setIsListening(true); isListeningRef.current = true; textRef.current = inputMessage; updateVisualizer(); };
+        recognitionRef.current.onresult = (e) => { if (silenceTimer.current) clearTimeout(silenceTimer.current); silenceTimer.current = setTimeout(() => { recognitionRef.current.stop(); }, 2500); setInputMessage(textRef.current + (textRef.current && !textRef.current.endsWith(' ') ? ' ' : '') + Array.from(e.results).map(r => r[0].transcript).join('')); };
+        recognitionRef.current.onend = () => { setIsListening(false); isListeningRef.current = false; setVolume(0); stream.getTracks().forEach(t => t.stop()); };
+        recognitionRef.current.start();
+      } catch (err) { setIsListening(false); }
+  };
+  
+  const handlePurify = async () => { if (!inputMessage.trim()) return; setIsPurifying(true); await new Promise(r => setTimeout(r, 800)); setInputMessage(`Act as an expert. ${inputMessage}?`); setIsPurifying(false); };
+  
+  const handleHistoryClick = (historyItem) => {
+    if (window.innerWidth <= 768) setSidebarOpen(false);
+    setSelectedBot(bots.find(b => b.id === 'deepseek'));
+    setMessages([
+        { text: historyItem.title, sender: 'user', time: 'Yesterday' },
+        { text: "Here is the context from your previous session...", sender: 'bot', botLogo: deepseekLogo }
+    ]);
   };
 
   const handleSend = () => {
     if (!inputMessage.trim()) return;
+    
     let targets = [];
     const lowerInput = inputMessage.toLowerCase();
     
@@ -193,114 +155,130 @@ const ChatPage = ({ user, onLogout }) => {
       targets = tagged.length > 0 ? tagged : (selectedBot ? [selectedBot] : []);
     }
     
-    if (targets.length === 0) return;
+    if (targets.length === 0) {
+        const deepseek = bots.find(b => b.id === 'deepseek');
+        targets = [deepseek];
+        setSelectedBot(deepseek);
+    }
 
     const userMsg = { text: inputMessage, sender: 'user', time: new Date().toLocaleTimeString() };
     setMessages(prev => [...prev, userMsg]);
     
     if (messages.length === 0) {
-      setChatHistory([{ id: Date.now(), title: inputMessage.slice(0, 25) + "..." }, ...chatHistory]);
+        setChatHistory([{ id: Date.now(), title: inputMessage }, ...chatHistory]);
     }
 
     targets.forEach((bot, index) => {
       setTimeout(() => {
-        setMessages(prev => [...prev, { 
-          text: `[${bot.name}]: I've analyzed your request and generated a specialized response.`, 
-          sender: 'bot', 
-          botLogo: bot.logo,
-          isVerticalFull: targets.length > 1,
-          time: new Date().toLocaleTimeString() 
-        }]);
-      }, 800 + (index * 250));
+        setMessages(prev => [...prev, { text: `[${bot.name}]: Analyzed: "${inputMessage}".`, sender: 'bot', botLogo: bot.logo, isVerticalFull: false }]);
+      }, 800);
     });
     
     setInputMessage('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); 
-      handleSend();
-    }
-  };
+  const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+  const handleLogout = () => { onLogout(); navigate('/'); };
 
-  const handleLogout = () => {
-    onLogout();
-    navigate('/');
-  };
+  // Calculate desktop width props
+  const isMobile = window.innerWidth <= 768;
+  const desktopSidebarWidth = sidebarOpen ? '280px' : '0';
+  const desktopBorder = (!isMobile && !sidebarOpen) ? 'none' : '1px solid #33333322';
 
   return (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: isDarkMode ? '#0d0d0e' : '#f8fafc', color: isDarkMode ? '#fff' : '#1e293b', transition: '0.3s' }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: isDarkMode ? '#0d0d0e' : '#f8fafc', color: isDarkMode ? '#fff' : '#1e293b', overflow: 'hidden' }}>
+      <style>{styles}</style>
+
+      {/* Sidebar Overlay (Mobile Only) */}
+      {isMobile && sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       
       {/* SIDEBAR */}
-      <aside style={{ width: sidebarOpen ? '280px' : '0', background: isDarkMode ? '#171719' : '#fff', borderRight: '1px solid #33333322', transition: '0.3s', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <aside 
+        className={`sidebar-container ${sidebarOpen ? 'open' : ''}`} 
+        style={{ 
+          width: isMobile ? undefined : desktopSidebarWidth, // Fixed 0px on desktop closed
+          minWidth: isMobile ? undefined : desktopSidebarWidth, // Prevent flex item from collapsing weirdly
+          background: isDarkMode ? '#171719' : '#fff', 
+          borderRight: desktopBorder, // Remove border when closed
+          display: 'flex', 
+          flexDirection: 'column', 
+          flexShrink: 0,
+          whiteSpace: 'nowrap', // Prevent text wrapping when closing
+          overflow: 'hidden',
+          transition: 'width 0.3s ease, min-width 0.3s ease'
+        }}
+      >
         <div style={{ padding: '20px', flex: 1 }}>
-          <button onClick={() => {setMessages([]); setSelectedBot(null);}} style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>+ New Chat</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <span style={{ fontWeight: 'bold', opacity: 0.5, fontSize: '12px' }}>MENU</span>
+            {isMobile && <X style={{cursor:'pointer'}} onClick={() => setSidebarOpen(false)} />}
+          </div>
+          <button onClick={() => {setMessages([]); setSelectedBot(null); if(isMobile) setSidebarOpen(false);}} style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>+ New Chat</button>
           
           <div style={{ marginTop: '20px' }}>
             <p style={{ fontSize: '11px', opacity: 0.5, fontWeight: 'bold' }}>HISTORY</p>
             {chatHistory.map(h => (
-              <div key={h.id} style={{ padding: '10px', fontSize: '13px', opacity: 0.7, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MessageSquare size={14} /> {h.title}
+              <div 
+                key={h.id} 
+                onClick={() => handleHistoryClick(h)}
+                style={{ padding: '10px', fontSize: '13px', opacity: 0.7, display: 'flex', gap: '8px', cursor: 'pointer', transition: '0.2s', borderRadius: '8px' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <MessageSquare size={14} /> 
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.title}</span>
               </div>
             ))}
           </div>
         </div>
 
         <div style={{ padding: '20px', borderTop: '1px solid #33333322' }}>
-          <button onClick={() => setShowSettings(true)} style={{ background: 'none', border: 'none', color: 'inherit', display: 'flex', gap: '10px', cursor: 'pointer', alignItems: 'center' }}>
-            <Settings size={18} /> Settings
-          </button>
+            <button onClick={() => { 
+                setShowSettings(true); 
+                if (isMobile) setSidebarOpen(false); 
+            }} style={{ background: 'none', border: 'none', color: 'inherit', display: 'flex', gap: '10px', cursor: 'pointer', alignItems: 'center' }}>
+                <Settings size={18} /> Settings
+            </button>
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Main Content */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', overflow: 'hidden' }}>
         
-        {/* HEADER */}
-        <header style={{ height: '60px', padding: '0 20px', borderBottom: '1px solid #33333322', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Header */}
+        <header style={{ height: '60px', padding: '0 20px', borderBottom: '1px solid #33333322', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <Menu onClick={() => setSidebarOpen(!sidebarOpen)} style={{ cursor: 'pointer' }} />
           <div style={{ fontWeight: 'bold' }}>Protonix AI</div>
         </header>
 
-        {/* SETTINGS MODAL */}
+        {/* Settings Modal */}
         {showSettings && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '30px', borderRadius: '24px', width: '400px', border: '1px solid #33333344' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0 }}>System Settings</h3>
-                <X onClick={() => setShowSettings(false)} style={{ cursor: 'pointer' }} />
-              </div>
-              <div style={{ padding: '15px', background: '#8882', borderRadius: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User color="white" /></div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>Protonix User</p>
-                  <p style={{ margin: 0, fontSize: '11px', opacity: 0.5 }}>{user?.email || 'admin@protonix.ai'}</p>
-                </div>
-              </div>
-              <button onClick={handleLogout} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #ef4444', color: '#ef4444', background: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                <LogOut size={18} /> Logout to Home
-              </button>
-            </div>
+           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+             <div style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '30px', borderRadius: '24px', width: '400px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3 style={{margin:0}}>Settings</h3><X onClick={()=>setShowSettings(false)} style={{cursor:'pointer'}}/></div>
+               <div style={{ padding: '15px', background: '#8882', borderRadius: '12px', margin: '20px 0', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#4f46e5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><User color="white"/></div>
+                 <div><p style={{margin:0, fontWeight:'bold'}}>Protonix User</p><p style={{margin:0, fontSize:'11px', opacity:0.5}}>{user?.email}</p></div>
+               </div>
+               <button onClick={handleLogout} style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #ef4444', color: '#ef4444', background: 'none', cursor: 'pointer' }}>Logout</button>
+             </div>
           </div>
         )}
 
-        {/* CHAT AREA */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        {/* Chat Scroll Container */}
+        <div 
+          ref={chatContainerRef}
+          onScroll={handleScroll}
+          className="chat-scroll-container" 
+          style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+        >
           {!selectedBot && messages.length === 0 ? (
-            <div style={{ textAlign: 'center', marginTop: '40px' }}>
-              <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '40px' }}>Choose Intelligence</h1>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(3, 1fr)', 
-                gap: '20px', 
-                maxWidth: '900px', 
-                margin: '0 auto' 
-              }}>
+            <div style={{ textAlign: 'center', marginTop: '20px' }}>
+              <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '30px' }}>Choose Intelligence</h1>
+              <div className="bot-grid-container">
                 {bots.map(bot => (
-                  <div key={bot.id} onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center' }}>
-                    <div style={{ width: '50px', height: '50px', background: 'white', borderRadius: '10px', padding: '8px', margin: '0 auto 15px' }}>
+                  <div key={bot.id} className="bot-card" onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '50px', height: '50px', background: 'white', borderRadius: '10px', padding: '8px', marginBottom: '15px' }}>
                       <img src={bot.logo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={bot.name} />
                     </div>
                     <p style={{ margin: 0, fontWeight: 'bold' }}>{bot.name}</p>
@@ -309,14 +287,14 @@ const ChatPage = ({ user, onLogout }) => {
               </div>
             </div>
           ) : (
-            <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%' }}>
+            <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%', paddingBottom: '20px' }}>
               {messages.map((m, i) => (
                 <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '24px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
                   <div style={{ width: '36px', height: '36px', background: 'white', borderRadius: '8px', padding: '6px', flexShrink: 0 }}>
                     {m.sender === 'user' ? <User size={24} color="black" /> : <img src={m.botLogo} style={{ width: '100%' }} alt="bot" />}
                   </div>
-                  <div style={{ background: m.sender === 'user' ? '#4f46e5' : (isDarkMode ? '#1e1e21' : '#fff'), padding: '14px 20px', borderRadius: '16px', border: m.sender === 'bot' ? '1px solid #33333322' : 'none', width: m.isVerticalFull ? '100%' : 'auto' }}>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                  <div style={{ background: m.sender === 'user' ? '#4f46e5' : (isDarkMode ? '#1e1e21' : '#fff'), padding: '14px 20px', borderRadius: '16px', border: m.sender === 'bot' ? '1px solid #33333322' : 'none', maxWidth: '85%', wordBreak: 'break-word' }}>
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{m.text}</div>
                   </div>
                 </div>
               ))}
@@ -325,59 +303,53 @@ const ChatPage = ({ user, onLogout }) => {
           )}
         </div>
 
-        {/* INPUT AREA */}
-        <div style={{ padding: '20px', maxWidth: '850px', width: '100%', margin: '0 auto' }}>
+        {showScrollBtn && (
+          <button onClick={scrollToBottom} style={{ position: 'absolute', bottom: '100px', left: '50%', transform: 'translateX(-50%)', width: '40px', height: '40px', borderRadius: '50%', background: isDarkMode ? '#333' : '#fff', color: isDarkMode ? '#fff' : '#333', border: '1px solid #33333344', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 20 }}>
+            <ArrowDown size={20} />
+          </button>
+        )}
+
+        <div style={{ padding: '20px', maxWidth: '850px', width: '100%', margin: '0 auto', flexShrink: 0, zIndex: 10 }}>
           
-          {/* Audio Visualizer */}
+          {/* Visualizer (Bottom-anchored) */}
           {isListening && (
-            <div style={{ display: 'flex', gap: '4px', height: '30px', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+            <div style={{ 
+              display: 'flex', gap: '4px', justifyContent: 'center', marginBottom: '10px', 
+              alignItems: 'flex-end', height: '24px' 
+            }}>
               {[...Array(8)].map((_, i) => (
-                <div key={i} style={{ width: '4px', height: `${Math.max(6, volume * (i % 2 === 0 ? 0.8 : 1.2))}px`, background: '#4f46e5', borderRadius: '10px', transition: '0.1s' }} />
+                <div key={i} style={{ 
+                  width: '4px', 
+                  height: `${Math.max(6, volume * (i % 2 === 0 ? 0.6 : 0.9))}px`, 
+                  background: '#4f46e5', 
+                  borderRadius: '10px', 
+                  transition: '0.1s' 
+                }} />
               ))}
             </div>
           )}
 
-          <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '14px 20px', alignItems: 'flex-end', gap: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
-            
-            {!isListening ? 
-              <Mic size={20} onClick={handleVoiceToggle} style={{ cursor: 'pointer', marginBottom: '5px' }} color="#94a3b8" /> : 
-              <MicOff size={20} onClick={handleVoiceToggle} color="#ef4444" style={{ cursor: 'pointer', marginBottom: '5px' }} />
-            }
-            
-            {/* ✅ PURIFY BUTTON (Handles Loading State) */}
-            {isPurifying ? (
-              <Loader2 size={20} className="animate-spin" color="#a855f7" style={{ marginBottom: '5px' }} />
-            ) : (
-              <Wand2 size={20} onClick={handlePurify} color="#a855f7" style={{ cursor: 'pointer', marginBottom: '5px' }} />
-            )}
-            
-            <textarea 
-              ref={textareaRef}
-              rows={1}
-              style={{ 
-                flex: 1, 
-                background: 'transparent', 
-                border: 'none', 
-                color: 'inherit', 
-                outline: 'none', 
-                resize: 'none',
-                overflow: 'hidden',
-                minHeight: '24px',
-                maxHeight: '200px',
-                fontFamily: 'inherit',
-                fontSize: '16px',
-                lineHeight: '1.5',
-                padding: '0'
-              }}
-              placeholder="Tag @gpt or @all... (Click Wand to Purify)"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            
-            <Send size={20} onClick={handleSend} color="#4f46e5" style={{ cursor: 'pointer', marginBottom: '5px' }} />
+          <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '14px 20px', alignItems: 'flex-end', gap: '15px' }}>
+             
+             <div style={{ display: 'flex', gap: '10px', paddingBottom: '5px' }}>
+                {!isListening ? <Mic size={20} onClick={handleVoiceToggle} style={{ cursor: 'pointer' }} color="#94a3b8" /> : <MicOff size={20} onClick={handleVoiceToggle} color="#ef4444" style={{ cursor: 'pointer' }} />}
+                {isPurifying ? <Loader2 size={20} className="animate-spin" color="#a855f7" /> : <Wand2 size={20} onClick={handlePurify} color="#a855f7" style={{ cursor: 'pointer' }} />}
+             </div>
+
+             <textarea 
+               ref={textareaRef} 
+               rows={1} 
+               placeholder="Message..." 
+               style={{ flex: 1, background: 'transparent', border: 'none', color: 'inherit', outline: 'none', resize: 'none', overflowY: 'auto', minHeight: '24px', maxHeight: '200px', fontSize: '16px', lineHeight: '1.5' }} 
+               value={inputMessage} 
+               onChange={(e) => setInputMessage(e.target.value)} 
+               onKeyDown={handleKeyDown}
+             />
+             
+             <Send size={20} onClick={handleSend} color="#4f46e5" style={{ cursor: 'pointer', marginBottom: '5px' }} />
           </div>
         </div>
+
       </main>
     </div>
   );
