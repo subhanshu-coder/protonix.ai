@@ -91,7 +91,9 @@ function App() {
   }
   
   // Basename for GitHub Pages support
-  const basename = window.location.hostname === 'localhost' ? '/' : '/protonix.ai';
+  const basename = window.location.hostname.includes('github.io') 
+    ? '/protonix.ai' 
+    : '/';
   
   return (
     <Router basename={basename}>
