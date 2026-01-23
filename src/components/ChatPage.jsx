@@ -246,7 +246,7 @@ const ChatPage = ({ user, onLogout }) => {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', overflow: 'hidden' }}>
         
         {/* Header */}
-        <header style={{ height: '60px', padding: '0 20px', borderBottom: '1px solid #33333322', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <header style={{ height: '40px', padding: '0 20px', borderBottom: '1px solid #33333322', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <Menu onClick={() => setSidebarOpen(!sidebarOpen)} style={{ cursor: 'pointer' }} />
           <div style={{ fontWeight: 'bold' }}>Protonix AI</div>
         </header>
@@ -270,15 +270,15 @@ const ChatPage = ({ user, onLogout }) => {
           ref={chatContainerRef}
           onScroll={handleScroll}
           className="chat-scroll-container" 
-          style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+          style={{ flex: 1, overflowY: 'auto', padding: '30px', display: 'flex', flexDirection: 'column', minHeight: 0 }}
         >
           {!selectedBot && messages.length === 0 ? (
             <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '30px' }}>Choose Intelligence</h1>
+              <h1 style={{ fontSize: '30px', fontWeight: '800', marginBottom: '20px' }}>Choose Intelligence</h1>
               <div className="bot-grid-container">
                 {bots.map(bot => (
                   <div key={bot.id} className="bot-card" onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '50px', height: '50px', background: 'white', borderRadius: '10px', padding: '8px', marginBottom: '15px' }}>
+                    <div style={{ width: '50px', height: '50px', background: 'white', borderRadius: '10px', padding: '8px', marginBottom: '5px' }}>
                       <img src={bot.logo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={bot.name} />
                     </div>
                     <p style={{ margin: 0, fontWeight: 'bold' }}>{bot.name}</p>
@@ -329,7 +329,7 @@ const ChatPage = ({ user, onLogout }) => {
             </div>
           )}
 
-          <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '14px 20px', alignItems: 'flex-end', gap: '15px' }}>
+          <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '24px 20px', alignItems: 'flex-end', gap: '15px' }}>
              
              <div style={{ display: 'flex', gap: '10px', paddingBottom: '5px' }}>
                 {!isListening ? <Mic size={20} onClick={handleVoiceToggle} style={{ cursor: 'pointer' }} color="#94a3b8" /> : <MicOff size={20} onClick={handleVoiceToggle} color="#ef4444" style={{ cursor: 'pointer' }} />}
