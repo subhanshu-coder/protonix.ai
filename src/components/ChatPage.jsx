@@ -270,11 +270,11 @@ const ChatPage = ({ user, onLogout }) => {
           ref={chatContainerRef}
           onScroll={handleScroll}
           className="chat-scroll-container" 
-          style={{ flex: 1, overflowY: 'auto', padding: '30px', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+          style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}
         >
           {!selectedBot && messages.length === 0 ? (
             <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <h1 style={{ fontSize: '30px', fontWeight: '800', marginBottom: '20px' }}>Choose Intelligence</h1>
+              <h1 style={{ fontSize: '30px', fontWeight: '800', marginBottom: '10px' }}>Choose Intelligence</h1>
               <div className="bot-grid-container">
                 {bots.map(bot => (
                   <div key={bot.id} className="bot-card" onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
