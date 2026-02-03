@@ -52,6 +52,9 @@ const ChatPage = ({ user, onLogout }) => {
     { id: 'grok', name: 'Grok', logo: grokLogo, accent: '#ffffff' }
   ];
 
+  // Helper to check if we are in the "Empty State" (Logos visible)
+  const isChatEmpty = !selectedBot && messages.length === 0;
+
   // Scroll Logic
   const handleScroll = () => {
     if (chatContainerRef.current) {
@@ -196,14 +199,14 @@ const ChatPage = ({ user, onLogout }) => {
       <aside 
         className={`sidebar-container ${sidebarOpen ? 'open' : ''}`} 
         style={{ 
-          width: isMobile ? undefined : desktopSidebarWidth, // Fixed 0px on desktop closed
-          minWidth: isMobile ? undefined : desktopSidebarWidth, // Prevent flex item from collapsing weirdly
+          width: isMobile ? undefined : desktopSidebarWidth, 
+          minWidth: isMobile ? undefined : desktopSidebarWidth, 
           background: isDarkMode ? '#171719' : '#fff', 
-          borderRight: desktopBorder, // Remove border when closed
+          borderRight: desktopBorder, 
           display: 'flex', 
           flexDirection: 'column', 
           flexShrink: 0,
-          whiteSpace: 'nowrap', // Prevent text wrapping when closing
+          whiteSpace: 'nowrap', 
           overflow: 'hidden',
           transition: 'width 0.3s ease, min-width 0.3s ease'
         }}
@@ -246,7 +249,7 @@ const ChatPage = ({ user, onLogout }) => {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100%', overflow: 'hidden' }}>
         
         {/* Header */}
-        <header style={{ height: '40px', padding: '0 20px', borderBottom: '1px solid #33333322', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <header style={{ height: '50px', padding: '0 20px', borderBottom: '1px solid #33333322', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <Menu onClick={() => setSidebarOpen(!sidebarOpen)} style={{ cursor: 'pointer' }} />
           <div style={{ fontWeight: 'bold' }}>Protonix AI</div>
         </header>
@@ -265,20 +268,32 @@ const ChatPage = ({ user, onLogout }) => {
           </div>
         )}
 
+        {/* TOP SPACER (Only when empty) - pushes logos down from top */}
+        {isChatEmpty && <div style={{ flex: '0.4 1 auto' }} />}
+
         {/* Chat Scroll Container */}
         <div 
           ref={chatContainerRef}
           onScroll={handleScroll}
           className="chat-scroll-container" 
-          style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+          style={{ 
+            // CHANGE: If empty, shrink to fit content (so input is next to it). If active, fill space.
+            flex: isChatEmpty ? '0 0 auto' : '1 1 auto',
+            overflowY: 'auto', 
+            padding: '20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: 0,
+            justifyContent: 'flex-start'
+          }}
         >
-          {!selectedBot && messages.length === 0 ? (
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <h1 style={{ fontSize: '30px', fontWeight: '800', marginBottom: '10px' }}>Choose Intelligence</h1>
+          {isChatEmpty ? (
+            <div style={{ textAlign: 'center', paddingBottom: '0px' }}> {/* Removed large bottom padding */}
+              <h1 style={{ fontSize: '25px', fontWeight: '900', marginBottom: '30px' }}>Choose Intelligence</h1>
               <div className="bot-grid-container">
                 {bots.map(bot => (
                   <div key={bot.id} className="bot-card" onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '50px', height: '50px', background: 'white', borderRadius: '10px', padding: '8px', marginBottom: '5px' }}>
+                    <div style={{ width: '50px', height: '40px', background: 'white', borderRadius: '10px', padding: '8px', marginBottom: '5px' }}>
                       <img src={bot.logo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={bot.name} />
                     </div>
                     <p style={{ margin: 0, fontWeight: 'bold' }}>{bot.name}</p>
@@ -289,7 +304,7 @@ const ChatPage = ({ user, onLogout }) => {
           ) : (
             <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%', paddingBottom: '20px' }}>
               {messages.map((m, i) => (
-                <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '24px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
+                <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
                   <div style={{ width: '36px', height: '36px', background: 'white', borderRadius: '8px', padding: '6px', flexShrink: 0 }}>
                     {m.sender === 'user' ? <User size={24} color="black" /> : <img src={m.botLogo} style={{ width: '100%' }} alt="bot" />}
                   </div>
@@ -309,7 +324,8 @@ const ChatPage = ({ user, onLogout }) => {
           </button>
         )}
 
-        <div style={{ padding: '20px', maxWidth: '850px', width: '100%', margin: '0 auto', flexShrink: 0, zIndex: 10 }}>
+        {/* Input Area */}
+        <div style={{ padding: '30px', maxWidth: '850px', width: '100%', margin: '0 auto', flexShrink: 0, zIndex: 10 }}>
           
           {/* Visualizer (Bottom-anchored) */}
           {isListening && (
@@ -349,6 +365,10 @@ const ChatPage = ({ user, onLogout }) => {
              <Send size={20} onClick={handleSend} color="#4f46e5" style={{ cursor: 'pointer', marginBottom: '5px' }} />
           </div>
         </div>
+
+        {/* BOTTOM SPACER (Only when empty) - pushes everything else UP */}
+        {/* Flex 1.0 vs Top Flex 0.4 ensures content is at ~30% height (Upper Middle) */}
+        {isChatEmpty && <div style={{ flex: '1 1 auto' }} />}
 
       </main>
     </div>

@@ -1,15 +1,14 @@
 // src/components/ImageTrailEffect.jsx
 
 import React, { useRef } from "react";
-// import gsap from "gsap";
 
 export default function ImageTrailEffect({
   imageSources,
   imageClassName = "trail-img",
   containerClassName = "",
-  maxTrailImages = 12, // Increased for smoother trail
-  triggerDistance = 8, // Reduced for more responsive trail
-  fadeTimeout = 800, // Reduced fade time for faster transitions
+  maxTrailImages = 12,
+  triggerDistance = 8,
+  fadeTimeout = 800,
   style = {},
   children,
 }) {
@@ -28,7 +27,6 @@ export default function ImageTrailEffect({
     img.style.zIndex = zIndexCounter.current++;
     img.dataset.status = "active";
     
-    // Faster fade out for smoother transitions
     setTimeout(() => { 
       if (img) img.dataset.status = "inactive"; 
     }, fadeTimeout);
@@ -41,11 +39,11 @@ export default function ImageTrailEffect({
   }
 
   function onMove(e) {
-    e.preventDefault();
+    // REMOVED: e.preventDefault(); <--- This was blocking the scroll!
+    
     const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
     
-    // Much more sensitive trigger for smoother trail
     if (calcDist(x, y) > window.innerWidth / triggerDistance) {
       const i = imageIndex++ % imgRefs.current.length;
       const img = imgRefs.current[i]?.current;
@@ -60,7 +58,7 @@ export default function ImageTrailEffect({
       style={{ 
         position: "relative", 
         width: "100%",
-        cursor: "crosshair",
+        // cursor: "crosshair", // Optional: You might want to remove this if it looks weird while scrolling
         ...style 
       }}
       onMouseMove={onMove}
@@ -81,7 +79,6 @@ export default function ImageTrailEffect({
             top: 0,
             opacity: 0,
             pointerEvents: "none",
-            // Smoother, faster transitions
             transition: "transform 0.25s cubic-bezier(.25,.46,.45,.94), opacity 0.2s ease-out",
             transform: "scale(0.3)",
             willChange: "transform, opacity",
