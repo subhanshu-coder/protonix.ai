@@ -7,16 +7,48 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #111827;
+  scroll-behavior: smooth;
+  /* CHANGE: Allow the body to grow naturally */
+  min-height: 100vh;
+  /* CHANGE: Let the window handle the scroll, but hide horizontal overflow */
+  overflow-x: hidden;
 }
-/* @tailwind base;
-@tailwind components;
-@tailwind utilities; */
 
-/* src/index.css */
-html, body, #root {
-  height: 100%;
+html {
+  /* CHANGE: Remove fixed height so window scroll works */
   width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden; /* Prevents the whole page from bouncing */
+  scroll-behavior: smooth;
+}
+
+#root {
+  /* CHANGE: Ensure root takes full height but doesn't trap scroll */
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* =========================================
+   PROFESSIONAL CUSTOM SCROLLBAR STYLES
+   ========================================= */
+
+/* The overall scrollbar width */
+::-webkit-scrollbar {
+  width: 10px;
+  background-color: #111827; /* Match background */
+}
+
+/* The track */
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+
+/* The thumb (drag handle) */
+::-webkit-scrollbar-thumb {
+  background: #374151; 
+  border-radius: 10px; 
+  border: 2px solid #111827; 
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6; 
 }

@@ -277,8 +277,8 @@ const ChatPage = ({ user, onLogout }) => {
           onScroll={handleScroll}
           className="chat-scroll-container" 
           style={{ 
-            // CHANGE: If empty, shrink to fit content (so input is next to it). If active, fill space.
-            flex: isChatEmpty ? '0 0 auto' : '1 1 auto',
+            // FIXED: Use '1' (flex-grow: 1, flex-shrink: 1, flex-basis: 0%) to allow shrinking
+            flex: isChatEmpty ? '0 0 auto' : '1', 
             overflowY: 'auto', 
             padding: '20px', 
             display: 'flex', 
@@ -288,7 +288,7 @@ const ChatPage = ({ user, onLogout }) => {
           }}
         >
           {isChatEmpty ? (
-            <div style={{ textAlign: 'center', paddingBottom: '0px' }}> {/* Removed large bottom padding */}
+            <div style={{ textAlign: 'center', paddingBottom: '0px' }}>
               <h1 style={{ fontSize: '25px', fontWeight: '900', marginBottom: '30px' }}>Choose Intelligence</h1>
               <div className="bot-grid-container">
                 {bots.map(bot => (
@@ -367,7 +367,6 @@ const ChatPage = ({ user, onLogout }) => {
         </div>
 
         {/* BOTTOM SPACER (Only when empty) - pushes everything else UP */}
-        {/* Flex 1.0 vs Top Flex 0.4 ensures content is at ~30% height (Upper Middle) */}
         {isChatEmpty && <div style={{ flex: '1 1 auto' }} />}
 
       </main>

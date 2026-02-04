@@ -3,38 +3,18 @@
 .features-section {
   min-height: 100vh;
   padding: 6rem 2rem;
-  /* FIXED: Completely transparent background - no black overlay */
-  background-color:rgba(0, 0, 0, 0.10);
+  background-color: rgba(0, 0, 0, 0.10);
   backdrop-filter: blur(3px);
   text-align: center;
-  opacity: 0;
-  transform: translateY(50px);
-  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  /* FIXED: Removed opacity: 0 so it is always visible */
   display: flex;
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
   position: relative;
   z-index: 1;
-}
-
-/* FIXED: Remove the black overlay pseudo-element completely */
-.features-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.10);
-  backdrop-filter: blur(3px);
-  z-index: -1;
-  pointer-events: none;
-}
-
-.features-section.visible {
-  opacity: 1;
-  transform: translateY(0);
+  /* Ensure smooth transitions for any other properties */
+  transition: background-color 0.3s ease;
 }
 
 /* Main title responsive */
@@ -47,11 +27,9 @@
   line-height: 1.2;
   text-align: center;
   padding: 0 1rem;
-  /* Add text shadow for better readability on blue background */
   text-shadow: 0 2px 15px rgba(0, 0, 0, 0.5);
 }
 
-/* FIXED: Better responsive main description paragraph */
 .features-main-description,
 .features-section > p {
   font-size: clamp(0.9rem, 2.5vw, 1.2rem);
@@ -62,12 +40,10 @@
   padding: 0 1rem;
   text-align: center;
   font-weight: 400;
-  /* FIXED: Ensure text wraps properly on all screens */
   white-space: normal;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
-  /* Add text shadow for better readability */
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
 }
 
@@ -80,7 +56,6 @@
 }
 
 .feature-card {
-  /* FIXED: Slightly more visible card background */
   background-color: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 16px;
@@ -88,14 +63,13 @@
   text-align: left;
   transition: all 0.3s ease;
   position: relative;
-  /* Add subtle backdrop blur for cards */
   backdrop-filter: blur(5px);
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
   border-color: rgba(59, 130, 246, 0.5);
-   border-width: 3px;
+  border-width: 3px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   background-color: rgba(255, 255, 255, 0.12);
 }
@@ -114,83 +88,84 @@
   font-size: clamp(0.85rem, 1.8vw, 1rem);
 }
 
-/* Features Ending Styles - COMPLETELY TRANSPARENT */
+/* Features Ending Styles - UPDATED FOR COMPACTNESS */
 .features-ending {
-  padding: 4rem 2rem;
-  /* FIXED: Completely transparent background */
+  /* FIXED: Reduced padding for a sleeker look */
+  padding: 2.5rem 1.5rem;
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.12) 0%, rgba(41, 119, 255, 0.06) 100%);
-  /* FIXED: Very light blue background */
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   text-align: center;
   width: 90%;
   margin: 0 auto;
-  max-width: 1200px;
+  max-width: 1000px; /* Reduced max-width slightly */
   overflow: hidden;
   position: relative;
 }
 
 .features-ending h2 {
-  font-size: clamp(1.4rem, 4vw, 3rem);
+  font-size: clamp(1.4rem, 3vw, 2.2rem); /* Slightly smaller heading */
   font-weight: 800;
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
   color: white;
   text-shadow: 0 2px 15px rgba(0, 0, 0, 0.6);
   padding: 0 1rem;
 }
 
 .features-ending p {
-  font-size: clamp(0.8rem, 2.2vw, 1.2rem);
+  font-size: clamp(0.8rem, 2vw, 1rem);
   color: rgba(255, 255, 255, 0.95);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   line-height: 1.6;
   max-width: 600px;
-  margin: 0 auto 3rem auto;
+  margin: 0 auto 2rem auto;
   padding: 0 1rem;
   text-align: center;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* FIXED: ScrollVelocity container with proper spacing */
+/* FIXED: Compact ScrollVelocity container */
 .scroll-velocity-container {
-  margin: 2rem 0 1rem 0;
+  margin: 1rem 0 0 0;
   padding: 0;
   overflow: hidden;
   width: 100%;
+  /* Optional: Mask edges for fading effect */
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
 }
 
 .features-parallax {
-  /* FIXED: Very light blue background - barely visible */
   background: rgba(59, 130, 246, 0.06) !important;
-  border-radius: 12px !important;
+  border-radius: 50px !important; /* Pill shape looks more professional */
   border: 1px solid rgba(59, 130, 246, 0.1) !important;
   backdrop-filter: blur(2px) !important;
   padding: 0 12px !important;
+  display: flex;
+  align-items: center;
 }
 
 .features-scroller {
-  color: #1e40af !important;
-  font-weight: 700 !important;
+  color: #60a5fa !important; /* Lighter blue for elegance */
+  font-weight: 600 !important;
+  /* FIXED: Smaller font size */
+  font-size: 0.9rem !important; 
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
   filter: none !important;
-  letter-spacing: 0.02em !important;
-  padding: 12px 0 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+  /* FIXED: Reduced padding */
+  padding: 8px 0 !important; 
 }
 
 .features-scroller span {
-  margin-right: 0.4em !important;
+  margin-right: 2rem !important; /* Increased spacing between text groups */
 }
 
 /* Responsive Design */
 @media (max-width: 1024px) {
   .features-section {
     padding: 5rem 1.5rem;
-  }
-  
-  .features-main-description,
-  .features-section > p {
-    font-size: clamp(0.85rem, 2.8vw, 1.1rem);
-    max-width: 700px;
   }
 }
 
@@ -207,7 +182,7 @@
   }
 
   .features-ending {
-    padding: 3rem 1rem;
+    padding: 2rem 1rem;
     width: 95%;
   }
 
@@ -217,14 +192,7 @@
   }
 
   .scroll-velocity-container {
-    margin: 1.5rem 0 0.5rem 0;
-  }
-  
-  .features-main-description,
-  .features-section > p {
-    font-size: clamp(0.8rem, 3.5vw, 1rem);
-    line-height: 1.6;
-    max-width: 600px;
+    margin: 1rem 0 0 0;
   }
 }
 
@@ -239,27 +207,11 @@
   }
 
   .features-ending {
-    padding: 2rem 0.8rem;
+    padding: 1.5rem 0.8rem;
     width: 98%;
   }
-
-  .features-scroller {
-    padding: 10px 0 !important;
-  }
   
-  .features-main-description,
-  .features-section > p {
-    font-size: clamp(0.75rem, 4vw, 0.9rem);
-    line-height: 1.5;
-    max-width: 500px;
-  }
-}
-
-@media (max-width: 320px) {
-  .features-main-description,
-  .features-section > p {
-    font-size: clamp(0.7rem, 4.5vw, 0.85rem);
-    line-height: 1.4;
-    max-width: 280px;
+  .features-scroller {
+    font-size: 0.75rem !important;
   }
 }

@@ -22,6 +22,7 @@ export default function ImageTrailEffect({
     if (!img || !wrapperRef.current) return;
     
     const bounds = wrapperRef.current.getBoundingClientRect();
+    // Offset by 30px to center the image on the cursor
     img.style.left = `${x - bounds.left - 30}px`;
     img.style.top = `${y - bounds.top - 30}px`;
     img.style.zIndex = zIndexCounter.current++;
@@ -39,11 +40,14 @@ export default function ImageTrailEffect({
   }
 
   function onMove(e) {
-    // REMOVED: e.preventDefault(); <--- This was blocking the scroll!
-    
+    // -----------------------------------------------------------------
+    // FIX: Removed "e.preventDefault()" so the page can scroll freely.
+    // -----------------------------------------------------------------
+
     const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
     
+    // Only add a new image if moved enough distance
     if (calcDist(x, y) > window.innerWidth / triggerDistance) {
       const i = imageIndex++ % imgRefs.current.length;
       const img = imgRefs.current[i]?.current;
@@ -58,7 +62,8 @@ export default function ImageTrailEffect({
       style={{ 
         position: "relative", 
         width: "100%",
-        // cursor: "crosshair", // Optional: You might want to remove this if it looks weird while scrolling
+        // touchAction: 'pan-y' allows vertical scrolling while touching this div
+        touchAction: "pan-y", 
         ...style 
       }}
       onMouseMove={onMove}
@@ -78,7 +83,7 @@ export default function ImageTrailEffect({
             left: 0,
             top: 0,
             opacity: 0,
-            pointerEvents: "none",
+            pointerEvents: "none", // Ensures clicks pass through to buttons below
             transition: "transform 0.25s cubic-bezier(.25,.46,.45,.94), opacity 0.2s ease-out",
             transform: "scale(0.3)",
             willChange: "transform, opacity",
@@ -87,7 +92,7 @@ export default function ImageTrailEffect({
         />
       ))}
       
-      {/* Render the wrapped content */}
+      {/* Render the wrapped content (Home Section) */}
       {children}
     </div>
   );
