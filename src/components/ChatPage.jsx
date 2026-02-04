@@ -280,7 +280,7 @@ const ChatPage = ({ user, onLogout }) => {
             // FIXED: Use '1' (flex-grow: 1, flex-shrink: 1, flex-basis: 0%) to allow shrinking
             flex: isChatEmpty ? '0 0 auto' : '1', 
             overflowY: 'auto', 
-            padding: '20px', 
+            padding: '40px', 
             display: 'flex', 
             flexDirection: 'column', 
             minHeight: 0,
@@ -289,7 +289,7 @@ const ChatPage = ({ user, onLogout }) => {
         >
           {isChatEmpty ? (
             <div style={{ textAlign: 'center', paddingBottom: '0px' }}>
-              <h1 style={{ fontSize: '25px', fontWeight: '900', marginBottom: '30px' }}>Choose Intelligence</h1>
+              <h1 style={{ fontSize: '25px', fontWeight: '900', marginBottom: '40px' }}>Choose Intelligence</h1>
               <div className="bot-grid-container">
                 {bots.map(bot => (
                   <div key={bot.id} className="bot-card" onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -302,10 +302,10 @@ const ChatPage = ({ user, onLogout }) => {
               </div>
             </div>
           ) : (
-            <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%', paddingBottom: '20px' }}>
+            <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%', paddingBottom: '30px' }}>
               {messages.map((m, i) => (
                 <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
-                  <div style={{ width: '36px', height: '36px', background: 'white', borderRadius: '8px', padding: '6px', flexShrink: 0 }}>
+                  <div style={{ width: '36px', height: '36px', background: 'white', borderRadius: '8px', padding: '5px', flexShrink: 0 }}>
                     {m.sender === 'user' ? <User size={24} color="black" /> : <img src={m.botLogo} style={{ width: '100%' }} alt="bot" />}
                   </div>
                   <div style={{ background: m.sender === 'user' ? '#4f46e5' : (isDarkMode ? '#1e1e21' : '#fff'), padding: '14px 20px', borderRadius: '16px', border: m.sender === 'bot' ? '1px solid #33333322' : 'none', maxWidth: '85%', wordBreak: 'break-word' }}>
@@ -325,13 +325,13 @@ const ChatPage = ({ user, onLogout }) => {
         )}
 
         {/* Input Area */}
-        <div style={{ padding: '30px', maxWidth: '850px', width: '100%', margin: '0 auto', flexShrink: 0, zIndex: 10 }}>
+        <div style={{ padding: '20px', maxWidth: '750px', width: '100%', margin: '0 auto', flexShrink: 0, zIndex: 10 }}>
           
           {/* Visualizer (Bottom-anchored) */}
           {isListening && (
             <div style={{ 
               display: 'flex', gap: '4px', justifyContent: 'center', marginBottom: '10px', 
-              alignItems: 'flex-end', height: '24px' 
+              alignItems: 'flex-end', height: '20px' 
             }}>
               {[...Array(8)].map((_, i) => (
                 <div key={i} style={{ 
@@ -345,9 +345,9 @@ const ChatPage = ({ user, onLogout }) => {
             </div>
           )}
 
-          <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '24px 20px', alignItems: 'flex-end', gap: '15px' }}>
+          <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '15px 20px', alignItems: 'flex-end', gap: '15px' }}>
              
-             <div style={{ display: 'flex', gap: '10px', paddingBottom: '5px' }}>
+             <div style={{ display: 'flex', gap: '10px', paddingBottom: '3px' }}>
                 {!isListening ? <Mic size={20} onClick={handleVoiceToggle} style={{ cursor: 'pointer' }} color="#94a3b8" /> : <MicOff size={20} onClick={handleVoiceToggle} color="#ef4444" style={{ cursor: 'pointer' }} />}
                 {isPurifying ? <Loader2 size={20} className="animate-spin" color="#a855f7" /> : <Wand2 size={20} onClick={handlePurify} color="#a855f7" style={{ cursor: 'pointer' }} />}
              </div>
