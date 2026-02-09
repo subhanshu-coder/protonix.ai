@@ -171,10 +171,54 @@ const ChatPage = ({ user, onLogout }) => {
         setChatHistory([{ id: Date.now(), title: inputMessage }, ...chatHistory]);
     }
 
-    targets.forEach((bot, index) => {
-      setTimeout(() => {
-        setMessages(prev => [...prev, { text: `[${bot.name}]: Analyzed: "${inputMessage}".`, sender: 'bot', botLogo: bot.logo, isVerticalFull: false }]);
-      }, 800);
+   // Loop through selected bots
+    targets.forEach(async (bot) => {
+      // 1. Add a temporary "Thinking..." message so the user knows something is happening
+      const tempId = Date.now() + Math.random();
+      setMessages(prev => [...prev, { 
+        text: "Thinking...", 
+        sender: 'bot', 
+        botLogo: bot.logo, 
+        isLoading: true,
+        tempId: tempId
+      }]);
+
+      try {
+        // 2. Send the message to YOUR Backend Server (http://localhost:5000)
+        const response = await fetch('http://localhost:5000/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message: inputMessage, 
+            botId: bot.id 
+          })
+        });
+
+        const data = await response.json();
+
+        // 3. Replace "Thinking..." with the Real AI Reply
+        setMessages(prev => {
+          // Filter out the specific "Thinking..." message using tempId
+          const filtered = prev.filter(msg => msg.tempId !== tempId);
+          return [...filtered, { 
+            text: data.reply, // The real answer from the server
+            sender: 'bot', 
+            botLogo: bot.logo 
+          }];
+        });
+
+      } catch (error) {
+        console.error("Error connecting to server:", error);
+        // Error handling
+        setMessages(prev => {
+           const filtered = prev.filter(msg => msg.tempId !== tempId);
+           return [...filtered, { 
+             text: "Error: Could not connect to Protonix Server. Is it running?", 
+             sender: 'bot', 
+             botLogo: bot.logo 
+           }];
+        });
+      }
     });
     
     setInputMessage('');
