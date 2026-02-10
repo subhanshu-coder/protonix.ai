@@ -10,34 +10,38 @@ app.use(express.json());
 
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
-
-  let apiKey = "";
-  let modelPath = "";
-
-  // Switch Logic for Grok, Perplexity, GPT, Gemini, and DeepSeek
-  if (botId === 'grok') {
-    apiKey = process.env.GROK_OR_KEY;
-    modelPath = "x-ai/grok-2-1212"; 
-  } else if (botId === 'perplexity') {
-    apiKey = process.env.PERPLEXITY_OR_KEY;
-    modelPath = "perplexity/sonar";
-  } else if (botId === 'gpt') {
-    apiKey = process.env.GPT_OR_KEY;
-    modelPath = "openai/gpt-4o-mini";
-  } else if (botId === 'gemini') {
-    apiKey = process.env.GEMINI_OR_KEY;
-    modelPath = "google/gemini-2.0-flash-001";
-  } else if (botId === 'deepseek') {
-    apiKey = process.env.DEEPSEEK_OR_KEY;
-    modelPath = "deepseek/deepseek-chat";
-  } else {
-    // Default fallback (e.g., for Claude)
-    apiKey = process.env.GEMINI_OR_KEY;
-    modelPath = "google/gemini-2.0-flash-lite";
-  }
+  console.log(`[Request] Bot: ${botId} | Msg: ${message.substring(0, 20)}...`);
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    let apiKey = "";
+    let modelPath = "";
+    let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+
+    if (botId === 'claude') {
+      apiKey = process.env.CLAUDE_OR_KEY;
+      modelPath = "anthropic/claude-3-haiku"; // Updated for 2026 release
+    } else if (botId === 'perplexity') {
+      apiKey = process.env.PERPLEXITY_OR_KEY;
+      modelPath = "perplexity/sonar";
+    } else if (botId === 'gemini') {
+      apiKey = process.env.GEMINI_OR_KEY;
+      modelPath = "google/gemini-2.0-flash-001";
+    } else if (botId === 'gpt') {
+      apiKey = process.env.GPT_OR_KEY;
+      modelPath = "openai/gpt-4o-mini";
+    } else if (botId === 'deepseek') {
+      apiKey = process.env.DEEPSEEK_OR_KEY;
+      modelPath = "deepseek/deepseek-chat";
+    } else if (botId === 'llama' || botId === 'grok') {
+      apiKey = process.env.GROQ_API_KEY;
+      modelPath = "llama-3.3-70b-versatile";
+      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+    } else {
+      apiKey = process.env.GEMINI_OR_KEY;
+      modelPath = "google/gemini-2.0-flash-001";
+    }
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -47,25 +51,28 @@ app.post('/api/chat', async (req, res) => {
       },
       body: JSON.stringify({
         "model": modelPath,
-        "messages": [{ "role": "user", "content": message }]
+        "messages": [
+          { "role": "system", "content": "You are a helpful assistant. If the user says 'hi' or 'hello', greet them back briefly. Only search if they ask a question." },
+          { "role": "user", "content": message }
+        ],
+        "max_tokens": 400,
+        "temperature": 0.7
       })
     });
 
     const data = await response.json();
 
     if (data.error) {
-      console.error("API Error Details:", data.error);
-      return res.status(500).json({ reply: `AI Error: ${data.error.message}` });
+      console.error(`[API Error] ${botId}:`, data.error.message);
+      return res.status(400).json({ reply: `AI Error: ${data.error.message}` });
     }
 
     res.json({ reply: data.choices[0].message.content });
 
   } catch (error) {
-    console.error("Server Error:", error);
-    res.status(500).json({ reply: "Connection failed. Please check your terminal." });
+    console.error(`[Server Error] ${botId}:`, error.message);
+    res.status(500).json({ reply: "Connection lost. Please check the server terminal." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Protonix Server running at http://localhost:${port}`);
-});
+app.listen(port, () => console.log(`✅ Success! Protonix Server live at http://localhost:${port}`));
