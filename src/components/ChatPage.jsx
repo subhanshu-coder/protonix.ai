@@ -193,7 +193,7 @@ const handleSend = () => {
       // Ensure this line in ChatPage.jsx uses 'inputMessage' or your text variable
 // Correct fetch body in ChatPage.jsx
 body: JSON.stringify({ 
-  message: inputMessage, 
+  message: currentMessage, 
   botId: bot.id 
 }),
       });
