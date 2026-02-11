@@ -191,8 +191,9 @@ const handleSend = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       // Ensure this line in ChatPage.jsx uses 'inputMessage' or your text variable
+// Correct fetch body in ChatPage.jsx
 body: JSON.stringify({ 
-  message: inputMessage, // Don't use "Hello" here!
+  message: inputMessage, 
   botId: bot.id 
 }),
       });
