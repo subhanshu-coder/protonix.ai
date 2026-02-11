@@ -190,10 +190,11 @@ const handleSend = () => {
       const response = await fetch("https://protonix-ai.onrender.com/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: currentMessage, // Now it sends what you typed
-          botId: bot.id           // Now it sends the correct bot ID
-        }),
+      // Ensure this line in ChatPage.jsx uses 'inputMessage' or your text variable
+body: JSON.stringify({ 
+  message: inputMessage, // Don't use "Hello" here!
+  botId: bot.id 
+}),
       });
 
       const data = await response.json();
