@@ -185,15 +185,18 @@ const ChatPage = ({ user, onLogout }) => {
 
       try {
         // 2. Send the message to YOUR Backend Server (http://localhost:5000)
-        const response = await fetch('http://localhost:5000/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            message: inputMessage, 
-            botId: bot.id 
-          })
-        });
-
+      // Inside your handleSubmit or sendMessage function
+// Check this part of your code:
+      const response = await fetch("https://protonix-ai.onrender.com/api/chat", {
+        method: "POST", // <--- THIS IS CRITICAL
+      headers: {
+        "Content-Type": "application/json",
+       },
+       body: JSON.stringify({ 
+        message: "Hello", 
+        botId: "gemini" 
+        }),
+       });
         const data = await response.json();
 
         // 3. Replace "Thinking..." with the Real AI Reply
