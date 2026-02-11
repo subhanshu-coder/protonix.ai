@@ -3,13 +3,31 @@ import cors from 'cors';
 import 'dotenv/config';
 
 const app = express();
+// Render/Railway will provide the PORT automatically via process.env.PORT
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+// Update this to your actual GitHub Pages URL
+const allowedOrigin = 'https://subhanshu-coder.github.io'; 
+
+app.use(cors({
+  origin: [allowedOrigin, 'http://localhost:5173'], // Allows both live site and local testing
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
+
 app.use(express.json());
+
+// 1. Health Check Route (To see if server is running)
+app.get('/', (req, res) => {
+  res.send('✅ Protonix Server is Online and Running!');
+});
 
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
+  
+  // Basic validation to prevent server crashes
+  if (!message) return res.status(400).json({ reply: "Message is required" });
+
   console.log(`[Request] Bot: ${botId} | Msg: ${message.substring(0, 20)}...`);
 
   try {
@@ -17,9 +35,10 @@ app.post('/api/chat', async (req, res) => {
     let modelPath = "";
     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
+    // Logic for selecting models
     if (botId === 'claude') {
       apiKey = process.env.CLAUDE_OR_KEY;
-      modelPath = "anthropic/claude-3-haiku"; // Updated for 2026 release
+      modelPath = "anthropic/claude-3-haiku";
     } else if (botId === 'perplexity') {
       apiKey = process.env.PERPLEXITY_OR_KEY;
       modelPath = "perplexity/sonar";
@@ -45,7 +64,7 @@ app.post('/api/chat', async (req, res) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "http://localhost:5173",
+        "HTTP-Referer": allowedOrigin, // Better for OpenRouter tracking than localhost
         "X-Title": "Protonix AI",
         "Content-Type": "application/json"
       },
@@ -71,8 +90,10 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (error) {
     console.error(`[Server Error] ${botId}:`, error.message);
-    res.status(500).json({ reply: "Connection lost. Please check the server terminal." });
+    res.status(500).json({ reply: "The Protonix server encountered an error. Please try again later." });
   }
 });
 
-app.listen(port, () => console.log(`✅ Success! Protonix Server live at http://localhost:${port}`));
+app.listen(port, () => {
+  console.log(`🚀 Protonix Server live and listening on port ${port}`);
+});
