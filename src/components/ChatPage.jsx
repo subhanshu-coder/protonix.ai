@@ -145,84 +145,81 @@ const ChatPage = ({ user, onLogout }) => {
     ]);
   };
 
-  const handleSend = () => {
-    if (!inputMessage.trim()) return;
-    
-    let targets = [];
-    const lowerInput = inputMessage.toLowerCase();
-    
-    if (lowerInput.includes("@all")) {
-      targets = bots;
-    } else {
-      const tagged = bots.filter(b => lowerInput.includes(`@${b.id}`));
-      targets = tagged.length > 0 ? tagged : (selectedBot ? [selectedBot] : []);
-    }
-    
-    if (targets.length === 0) {
-        const deepseek = bots.find(b => b.id === 'deepseek');
-        targets = [deepseek];
-        setSelectedBot(deepseek);
-    }
+const handleSend = () => {
+  if (!inputMessage.trim()) return;
+  
+  let targets = [];
+  const lowerInput = inputMessage.toLowerCase();
+  
+  if (lowerInput.includes("@all")) {
+    targets = bots;
+  } else {
+    const tagged = bots.filter(b => lowerInput.includes(`@${b.id}`));
+    targets = tagged.length > 0 ? tagged : (selectedBot ? [selectedBot] : []);
+  }
+  
+  if (targets.length === 0) {
+      const deepseek = bots.find(b => b.id === 'deepseek');
+      targets = [deepseek];
+      setSelectedBot(deepseek);
+  }
 
-    const userMsg = { text: inputMessage, sender: 'user', time: new Date().toLocaleTimeString() };
-    setMessages(prev => [...prev, userMsg]);
-    
-    if (messages.length === 0) {
-        setChatHistory([{ id: Date.now(), title: inputMessage }, ...chatHistory]);
-    }
+  const userMsg = { text: inputMessage, sender: 'user', time: new Date().toLocaleTimeString() };
+  setMessages(prev => [...prev, userMsg]);
+  
+  if (messages.length === 0) {
+      setChatHistory([{ id: Date.now(), title: inputMessage }, ...chatHistory]);
+  }
 
-   // Loop through selected bots
-    targets.forEach(async (bot) => {
-      // 1. Add a temporary "Thinking..." message so the user knows something is happening
-      const tempId = Date.now() + Math.random();
-      setMessages(prev => [...prev, { 
-        text: "Thinking...", 
-        sender: 'bot', 
-        botLogo: bot.logo, 
-        isLoading: true,
-        tempId: tempId
-      }]);
+  // Store the message you typed before we clear the input box
+  const currentMessage = inputMessage;
+  setInputMessage(''); // Clear the input box immediately for a better UI
 
-      try {
-        // 2. Send the message to YOUR Backend Server (http://localhost:5000)
-      // Inside your handleSubmit or sendMessage function
-// Check this part of your code:
+  targets.forEach(async (bot) => {
+    const tempId = Date.now() + Math.random();
+    setMessages(prev => [...prev, { 
+      text: "Thinking...", 
+      sender: 'bot', 
+      botLogo: bot.logo, 
+      isLoading: true,
+      tempId: tempId
+    }]);
+
+    try {
+      // Send the ACTUAL message and ACTUAL bot selection to your live Render server
       const response = await fetch("https://protonix-ai.onrender.com/api/chat", {
-        method: "POST", // <--- THIS IS CRITICAL
-      headers: {
-        "Content-Type": "application/json",
-       },
-       body: JSON.stringify({ 
-        message: "Hello", 
-        botId: "gemini" 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          message: currentMessage, // Now it sends what you typed
+          botId: bot.id           // Now it sends the correct bot ID
         }),
-       });
-        const data = await response.json();
+      });
 
-        // 3. Replace "Thinking..." with the Real AI Reply
-        setMessages(prev => {
-          // Filter out the specific "Thinking..." message using tempId
-          const filtered = prev.filter(msg => msg.tempId !== tempId);
-          return [...filtered, { 
-            text: data.reply, // The real answer from the server
-            sender: 'bot', 
-            botLogo: bot.logo 
-          }];
-        });
+      const data = await response.json();
 
-      } catch (error) {
-        console.error("Error connecting to server:", error);
-        // Error handling
-        setMessages(prev => {
-           const filtered = prev.filter(msg => msg.tempId !== tempId);
-           return [...filtered, { 
-             text: "Error: Could not connect to Protonix Server. Is it running?", 
-             sender: 'bot', 
-             botLogo: bot.logo 
-           }];
-        });
-      }
-    });
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.tempId !== tempId);
+        return [...filtered, { 
+          text: data.reply, 
+          sender: 'bot', 
+          botLogo: bot.logo 
+        }];
+      });
+
+    } catch (error) {
+      console.error("Error connecting to server:", error);
+      setMessages(prev => {
+         const filtered = prev.filter(msg => msg.tempId !== tempId);
+         return [...filtered, { 
+           text: "Error: Could not connect to Protonix Server. It might be waking up (wait 30s) or Render keys are missing.", 
+           sender: 'bot', 
+           botLogo: bot.logo 
+         }];
+      });
+    }
+  });
+
     
     setInputMessage('');
   };
