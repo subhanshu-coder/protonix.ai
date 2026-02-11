@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 // Update this to your actual GitHub Pages URL
 // Change this to your actual Netlify URL
-const allowedOrigin = 'https://your-project-name.netlify.app'; 
+const allowedOrigin = 'https://protonixai.netlify.app'; 
 
 app.use(cors({
   origin: [allowedOrigin, 'http://localhost:5173'], 
