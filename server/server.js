@@ -7,10 +7,11 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Update this to your actual GitHub Pages URL
-const allowedOrigin = 'https://subhanshu-coder.github.io'; 
+// Change this to your actual Netlify URL
+const allowedOrigin = 'https://your-project-name.netlify.app'; 
 
 app.use(cors({
-  origin: [allowedOrigin, 'http://localhost:5173'], // Allows both live site and local testing
+  origin: [allowedOrigin, 'http://localhost:5173'], 
   methods: ['GET', 'POST'],
   credentials: true
 }));
