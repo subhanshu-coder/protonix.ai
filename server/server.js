@@ -3,32 +3,13 @@ import cors from 'cors';
 import 'dotenv/config';
 
 const app = express();
-// Render/Railway will provide the PORT automatically via process.env.PORT
 const port = process.env.PORT || 5000;
 
-// Update this to your actual GitHub Pages URL
-// Change this to your actual Netlify URL
-const allowedOrigin = 'https://protonixai.netlify.app'; 
-
-app.use(cors({
-  origin: [allowedOrigin, 'http://localhost:5173'], 
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
-
+app.use(cors());
 app.use(express.json());
-
-// 1. Health Check Route (To see if server is running)
-app.get('/', (req, res) => {
-  res.send('✅ Protonix Server is Online and Running!');
-});
 
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
-  
-  // Basic validation to prevent server crashes
-  if (!message) return res.status(400).json({ reply: "Message is required" });
-
   console.log(`[Request] Bot: ${botId} | Msg: ${message.substring(0, 20)}...`);
 
   try {
@@ -36,10 +17,11 @@ app.post('/api/chat', async (req, res) => {
     let modelPath = "";
     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
-    // Logic for selecting models
-    if (botId === 'claude') {
-      apiKey = process.env.CLAUDE_OR_KEY;
-      modelPath = "anthropic/claude-3-haiku";
+   if (botId === 'claude') {
+  apiKey = process.env.CLAUDE_OR_KEY;
+  // Haiku is cheaper and will work with your low balance
+  modelPath = "anthropic/claude-3-haiku"; 
+
     } else if (botId === 'perplexity') {
       apiKey = process.env.PERPLEXITY_OR_KEY;
       modelPath = "perplexity/sonar";
@@ -65,7 +47,7 @@ app.post('/api/chat', async (req, res) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": allowedOrigin, // Better for OpenRouter tracking than localhost
+        "HTTP-Referer": "http://localhost:5173",
         "X-Title": "Protonix AI",
         "Content-Type": "application/json"
       },
@@ -75,7 +57,7 @@ app.post('/api/chat', async (req, res) => {
           { "role": "system", "content": "You are a helpful assistant. If the user says 'hi' or 'hello', greet them back briefly. Only search if they ask a question." },
           { "role": "user", "content": message }
         ],
-        "max_tokens": 400,
+        "max_tokens": 500,
         "temperature": 0.7
       })
     });
@@ -91,10 +73,8 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (error) {
     console.error(`[Server Error] ${botId}:`, error.message);
-    res.status(500).json({ reply: "The Protonix server encountered an error. Please try again later." });
+    res.status(500).json({ reply: "Connection lost. Please check the server terminal." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Protonix Server live and listening on port ${port}`);
-});
+app.listen(port, () => console.log(`✅ Success! Protonix Server live at http://localhost:${port}`));
