@@ -211,7 +211,7 @@ const ChatPage = ({ user, onLogout }) => {
       }]);
 
       try {
-        const response = await fetch('http://localhost:5000/api/chat', {
+        const response = await fetch('https://protonix-ai.onrender.com/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: inputMessage, botId: bot.id })
@@ -339,16 +339,32 @@ const ChatPage = ({ user, onLogout }) => {
             </div>
           ) : (
             <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%' }}>
-              {messages.map((m, i) => (
-                <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
-                  <div style={{ width: '36px', height: '36px', background: 'white', borderRadius: '8px', padding: '15px', flexShrink: 0 }}>
-                    {m.sender === 'user' ? <User size={24} color="black" /> : <img src={m.botLogo} style={{ width: '100%' }} alt="bot" />}
-                  </div>
-                  <div style={{ background: m.sender === 'user' ? '#4f46e5' : '#1e1e21', padding: '14px 20px', borderRadius: '16px', maxWidth: '85%' }}>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-                  </div>
-                </div>
-              ))}
+{messages.map((m, i) => (
+  <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
+    
+    {/* FIXED: Reduced padding from 15px to 5px so the image is larger */}
+    <div style={{ 
+      width: '36px', 
+      height: '36px', 
+      background: 'white', 
+      borderRadius: '8px', 
+      padding: '5px',  // <--- CHANGED THIS
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      {m.sender === 'user' ? 
+        <User size={20} color="black" /> : 
+        <img src={m.botLogo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="bot" />
+      }
+    </div>
+
+    <div style={{ background: m.sender === 'user' ? '#4f46e5' : '#1e1e21', padding: '14px 20px', borderRadius: '16px', maxWidth: '85%' }}>
+      <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+    </div>
+  </div>
+))}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -364,7 +380,7 @@ const ChatPage = ({ user, onLogout }) => {
             </div>
           )}
           <div style={{ display: 'flex', background: isDarkMode ? '#1e1e21' : '#fff', border: '1px solid #33333322', borderRadius: '24px', padding: '15px 20px', alignItems: 'flex-end', gap: '15px' }}>
-             <div style={{ display: 'flex', gap: '10px', paddingBottom: '3px' }}>
+             <div style={{ display: 'flex', gap: '10px', paddingBottom: '2px' }}>
                {!isListening ? <Mic size={20} onClick={handleVoiceToggle} style={{cursor: 'pointer'}} color="#94a3b8" /> : <MicOff size={20} onClick={handleVoiceToggle} color="#ef4444" />}
                {isPurifying ? <Loader2 size={20} className="animate-spin" color="#a855f7" /> : <Wand2 size={20} onClick={handlePurify} color="#a855f7" style={{cursor: 'pointer'}} />}
              </div>
