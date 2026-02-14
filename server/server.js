@@ -42,11 +42,15 @@ app.post('/api/chat', async (req, res) => {
       apiKey = process.env.DEEPSEEK_OR_KEY;
       modelPath = "deepseek/deepseek-chat";
     } 
-    else if (botId === 'grok' || botId === 'llama') {
-      apiKey = process.env.GROQ_API_KEY;
-      modelPath = "llama-3.3-70b-versatile"; 
-      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    }
+    // ... inside your app.post('/api/chat', async (req, res) => { logic
+      else if (botId === 'grok' || botId === 'llama') {
+      // Use your new OpenRouter key for Grok/Llama
+      apiKey = process.env.GROQ_API_KEY; 
+      modelPath = "meta-llama/llama-3.3-70b-instruct"; // OpenRouter path for Llama
+      apiUrl = "https://openrouter.ai/api/v1/chat/completions"; // OpenRouter URL
+    } 
+
+// ... rest of the fetch call
 
     if (!apiKey) {
       return res.status(400).json({ reply: `Error: API Key for ${botId} is missing in server environment.` });
