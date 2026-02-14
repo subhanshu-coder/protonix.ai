@@ -10,37 +10,44 @@ app.use(express.json());
 
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
+  if (!message) return res.status(400).json({ reply: "Message is required" });
+
   console.log(`[Request] Bot: ${botId} | Msg: ${message.substring(0, 20)}...`);
 
   try {
     let apiKey = "";
     let modelPath = "";
     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+    let systemPrompt = "You are a helpful AI assistant.";
 
-   if (botId === 'claude') {
-  apiKey = process.env.CLAUDE_OR_KEY;
-  // Haiku is cheaper and will work with your low balance
-  modelPath = "anthropic/claude-3-haiku"; 
-
-    } else if (botId === 'perplexity') {
+    if (botId === 'claude') {
+      apiKey = process.env.CLAUDE_OR_KEY;
+      modelPath = "anthropic/claude-3-haiku";
+    } 
+    else if (botId === 'perplexity') {
       apiKey = process.env.PERPLEXITY_OR_KEY;
-      modelPath = "perplexity/sonar";
-    } else if (botId === 'gemini') {
+      modelPath = "perplexity/sonar"; // Sonar models are built for real-time search
+      // This instruction forces Perplexity to browse the live web
+      systemPrompt = "You are a real-time web search assistant. Always search the internet to provide current info with citations.";
+    } 
+    else if (botId === 'gemini') {
       apiKey = process.env.GEMINI_OR_KEY;
       modelPath = "google/gemini-2.0-flash-001";
-    } else if (botId === 'gpt') {
+      systemPrompt = "You are Google Gemini. Use Google Search to provide grounded, real-time answers for facts.";
+    } 
+    else if (botId === 'gpt') {
       apiKey = process.env.GPT_OR_KEY;
       modelPath = "openai/gpt-4o-mini";
-    } else if (botId === 'deepseek') {
+      // This instruction encourages GPT to use its internal 'browsing' knowledge or search tools
+      systemPrompt = "You are ChatGPT with real-time web access. Provide the latest information available for the user's query.";
+    } 
+    else if (botId === 'deepseek') {
       apiKey = process.env.DEEPSEEK_OR_KEY;
       modelPath = "deepseek/deepseek-chat";
-    } else if (botId === 'llama' || botId === 'grok') {
-      apiKey = process.env.GROQ_API_KEY;
-      modelPath = "llama-3.3-70b-versatile";
-      apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    } else {
-      apiKey = process.env.GEMINI_OR_KEY;
-      modelPath = "google/gemini-2.0-flash-001";
+    } 
+    else if (botId === 'grok') {
+      apiKey = process.env.GEMINI_OR_KEY; 
+      modelPath = "x-ai/grok-2-1212";
     }
 
     const response = await fetch(apiUrl, {
@@ -54,11 +61,11 @@ app.post('/api/chat', async (req, res) => {
       body: JSON.stringify({
         "model": modelPath,
         "messages": [
-          { "role": "system", "content": "You are a helpful assistant. If the user says 'hi' or 'hello', greet them back briefly. Only search if they ask a question." },
+          { "role": "system", "content": systemPrompt },
           { "role": "user", "content": message }
         ],
-        "max_tokens": 500,
-        "temperature": 0.7
+        "max_tokens": 500, // Increased to allow room for search result data
+        "temperature": 0.3 // Lower temperature makes real-time data more accurate
       })
     });
 
@@ -73,8 +80,8 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (error) {
     console.error(`[Server Error] ${botId}:`, error.message);
-    res.status(500).json({ reply: "Connection lost. Please check the server terminal." });
+    res.status(500).json({ reply: "The Protonix server encountered an error." });
   }
 });
 
-app.listen(port, () => console.log(`✅ Success! Protonix Server live at http://localhost:${port}`));
+app.listen(port, () => console.log(`🚀 Success! Protonix Server live at http://localhost:${port}`));
