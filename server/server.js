@@ -118,39 +118,33 @@ app.post('/api/chat', async (req, res) => {
     let modelPath = "";
     // let systemPrompt = "You are a helpful assistant.";
     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-    let temperature = 0.4;
-
-    // --- BOT LOGIC ---
-    // --- UPDATED MODEL LOGIC for 2026  // Default
-
-   
+   let temperature = 0.4; // Default
     let systemPrompt = "You are a helpful assistant.";
 
-    // --- 2026 UPDATED MODEL LOGIC ---
-    if (botId === 'perplexity') {
+    if (botId === 'grok') {
+      apiKey = process.env.GROQ_API_KEY; 
+      modelPath = "x-ai/grok-2-1212"; 
+      temperature = 0.9; // High temp = more 'masti' (fun/funny)
+      systemPrompt = "You are Grok. You are edgy, savage, and full of 'masti'. You know all current social media trends and Twitter (X) tea. Answer with attitude and humor.";
+    } 
+    else if (botId === 'perplexity') {
       apiKey = process.env.PERPLEXITY_OR_KEY;
       modelPath = "perplexity/sonar"; 
-      systemPrompt = "You are a real-time search engine. Use internet access for every query. Provide 2026 trends and news with citations.";
-    } 
+      systemPrompt = "You are a real-time search engine. Always search the web for 2026 data. Give current facts with citations.";
+    }
     else if (botId === 'gemini') {
       apiKey = process.env.GEMINI_OR_KEY;
-      // UPDATED ID for 2026
-      modelPath = "google/gemini-2.0-pro-exp-02-05"; 
-      systemPrompt = "You are Google Gemini. Use Google Search grounding for real-time accuracy on current events.";
-    } 
+      modelPath = "google/gemini-2.0-flash-001";
+      systemPrompt = "You are Google Gemini. Use your real-time Google Search grounding to give the most up-to-date answers for 2026.";
+    }
+    
       else if (botId === 'claude') {
       apiKey = process.env.CLAUDE_OR_KEY;
       // CHANGE THIS LINE:
       modelPath = "anthropic/claude-3.5-sonnet"; 
     
     }
-    else if (botId === 'grok') {
-      apiKey = process.env.GROQ_API_KEY; 
-      // UPDATED ID for Grok 2026
-      modelPath = "x-ai/grok-2-1212"; 
-      temperature = 0.9; // EXTRA HIGH for 'masti'
-      systemPrompt = "You are Grok. You are edgy, savage, and full of 'masti'. You have real-time X (Twitter) access. Use humor and talk about social media trends like a savage friend.";
-    }
+ 
     else if (botId === 'gpt') {
       apiKey = process.env.GPT_OR_KEY;
       modelPath = "openai/gpt-4o-2024-08-06";
