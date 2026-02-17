@@ -1,6 +1,101 @@
+// import express from 'express';
+// import cors from 'cors';
+// import 'dotenv/config';
+
+// const app = express();
+// const port = process.env.PORT || 5000;
+
+// app.use(cors());
+// app.use(express.json());
+
+// app.post('/api/chat', async (req, res) => {
+//   const { message, botId } = req.body;
+//   console.log(`[Request] Bot: ${botId} | Message: ${message.substring(0, 25)}...`);
+
+//   try {
+//     let apiKey = "";
+//     let modelPath = "";
+//     let systemPrompt = "You are a helpful assistant.";
+//     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+
+//     if (botId === 'perplexity') {
+//       apiKey = process.env.PERPLEXITY_OR_KEY;
+//       modelPath = "perplexity/sonar"; 
+//       // Forces real-time web search
+//       systemPrompt = "You are a real-time search engine. Always browse the web to provide the latest information with citations.";
+//     } 
+//     else if (botId === 'gemini') {
+//       apiKey = process.env.GEMINI_OR_KEY;
+//       modelPath = "google/gemini-2.0-flash-001";
+//       // Forces Google Search Grounding
+//       systemPrompt = "You are Google Gemini. Use Google Search to provide grounded, real-time answers for current events.";
+//     } 
+//     else if (botId === 'claude') {
+//       apiKey = process.env.CLAUDE_OR_KEY;
+//       modelPath = "anthropic/claude-3-opus";
+//     }
+//     else if (botId === 'gpt') {
+//       apiKey = process.env.GPT_OR_KEY;
+//       modelPath = "openai/gpt-4o-mini";
+//     } 
+//     else if (botId === 'deepseek') {
+//       apiKey = process.env.DEEPSEEK_OR_KEY;
+//       modelPath = "deepseek/deepseek-chat";
+//     } 
+//     // ... inside your app.post('/api/chat', async (req, res) => { logic
+//       else if (botId === 'grok' || botId === 'llama') {
+//       // Use your new OpenRouter key for Grok/Llama
+//       apiKey = process.env.GROQ_API_KEY; 
+//       modelPath = "meta-llama/llama-3.3-70b-instruct"; // OpenRouter path for Llama
+//       apiUrl = "https://openrouter.ai/api/v1/chat/completions"; // OpenRouter URL
+//     } 
+
+// // ... rest of the fetch call
+
+//     if (!apiKey) {
+//       return res.status(400).json({ reply: `Error: API Key for ${botId} is missing in server environment.` });
+//     }
+
+//     const response = await fetch(apiUrl, {
+//       method: "POST",
+//       headers: {
+//         "Authorization": `Bearer ${apiKey}`,
+//         "HTTP-Referer": "https://protonix-ai.onrender.com", // Updated for production
+//         "X-Title": "Protonix AI",
+//         "Content-Type": "application/json"
+//       },
+//       body: JSON.stringify({
+//         "model": modelPath,
+//         "messages": [
+//           { "role": "system", "content": systemPrompt },
+//           { "role": "user", "content": message }
+//         ],
+//         "max_tokens": 500,
+//         "temperature": 0.4 // Lower temperature is better for factual/real-time data
+//       })
+//     });
+
+//     const data = await response.json();
+
+//     if (data.error) {
+//       console.error(`[API Error] ${botId}:`, data.error.message);
+//       return res.status(400).json({ reply: `AI Error: ${data.error.message}` });
+//     }
+
+//     res.json({ reply: data.choices[0].message.content });
+
+//   } catch (error) {
+//     console.error(`[Server Error] ${botId}:`, error.message);
+//     res.status(500).json({ reply: "Connection lost. Please check the server logs." });
+//   }
+// });
+
+// app.listen(port, () => console.log(`🚀 Protonix live at port ${port}`));
+
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+// import fetch from 'node-fetch'; // Ensure you have node-fetch installed or use global fetch in Node 18+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -10,57 +105,70 @@ app.use(express.json());
 
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
+  
+  // Safety check for request body
+  if (!message || !botId) {
+    return res.status(400).json({ reply: "Missing message or botId." });
+  }
+
   console.log(`[Request] Bot: ${botId} | Message: ${message.substring(0, 25)}...`);
 
   try {
     let apiKey = "";
     let modelPath = "";
-    let systemPrompt = "You are a helpful assistant.";
+    // let systemPrompt = "You are a helpful assistant.";
     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+    let temperature = 0.4;
 
+    // --- BOT LOGIC ---
+    // --- UPDATED MODEL LOGIC for 2026  // Default
+
+   
+    let systemPrompt = "You are a helpful assistant.";
+
+    // --- 2026 UPDATED MODEL LOGIC ---
     if (botId === 'perplexity') {
       apiKey = process.env.PERPLEXITY_OR_KEY;
       modelPath = "perplexity/sonar"; 
-      // Forces real-time web search
-      systemPrompt = "You are a real-time search engine. Always browse the web to provide the latest information with citations.";
+      systemPrompt = "You are a real-time search engine. Use internet access for every query. Provide 2026 trends and news with citations.";
     } 
     else if (botId === 'gemini') {
       apiKey = process.env.GEMINI_OR_KEY;
-      modelPath = "google/gemini-2.0-flash-001";
-      // Forces Google Search Grounding
-      systemPrompt = "You are Google Gemini. Use Google Search to provide grounded, real-time answers for current events.";
+      // UPDATED ID for 2026
+      modelPath = "google/gemini-2.0-pro-exp-02-05"; 
+      systemPrompt = "You are Google Gemini. Use Google Search grounding for real-time accuracy on current events.";
     } 
-    else if (botId === 'claude') {
+      else if (botId === 'claude') {
       apiKey = process.env.CLAUDE_OR_KEY;
-      modelPath = "anthropic/claude-3-opus";
+      // CHANGE THIS LINE:
+      modelPath = "anthropic/claude-3.5-sonnet"; 
+    
+    }
+    else if (botId === 'grok') {
+      apiKey = process.env.GROQ_API_KEY; 
+      // UPDATED ID for Grok 2026
+      modelPath = "x-ai/grok-2-1212"; 
+      temperature = 0.9; // EXTRA HIGH for 'masti'
+      systemPrompt = "You are Grok. You are edgy, savage, and full of 'masti'. You have real-time X (Twitter) access. Use humor and talk about social media trends like a savage friend.";
     }
     else if (botId === 'gpt') {
       apiKey = process.env.GPT_OR_KEY;
-      modelPath = "openai/gpt-4o-mini";
+      modelPath = "openai/gpt-4o-2024-08-06";
     } 
     else if (botId === 'deepseek') {
       apiKey = process.env.DEEPSEEK_OR_KEY;
       modelPath = "deepseek/deepseek-chat";
-    } 
-    // ... inside your app.post('/api/chat', async (req, res) => { logic
-      else if (botId === 'grok' || botId === 'llama') {
-      // Use your new OpenRouter key for Grok/Llama
-      apiKey = process.env.GROQ_API_KEY; 
-      modelPath = "meta-llama/llama-3.3-70b-instruct"; // OpenRouter path for Llama
-      apiUrl = "https://openrouter.ai/api/v1/chat/completions"; // OpenRouter URL
-    } 
-
-// ... rest of the fetch call
-
+    }
     if (!apiKey) {
-      return res.status(400).json({ reply: `Error: API Key for ${botId} is missing in server environment.` });
+      return res.status(400).json({ reply: `Error: API Key for ${botId} is missing in .env file.` });
     }
 
+    // --- OPENROUTER API CALL ---
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://protonix-ai.onrender.com", // Updated for production
+        "HTTP-Referer": "https://protonix-ai.onrender.com", 
         "X-Title": "Protonix AI",
         "Content-Type": "application/json"
       },
@@ -70,24 +178,24 @@ app.post('/api/chat', async (req, res) => {
           { "role": "system", "content": systemPrompt },
           { "role": "user", "content": message }
         ],
-        "max_tokens": 500,
-        "temperature": 0.4 // Lower temperature is better for factual/real-time data
+        "max_tokens": 800,
+        "temperature": temperature
       })
     });
 
     const data = await response.json();
 
     if (data.error) {
-      console.error(`[API Error] ${botId}:`, data.error.message);
-      return res.status(400).json({ reply: `AI Error: ${data.error.message}` });
+      console.error(`[API Error] ${botId}:`, data.error.message || data.error);
+      return res.status(400).json({ reply: `AI Error: ${data.error.message || "Failed to fetch response."}` });
     }
 
     res.json({ reply: data.choices[0].message.content });
 
   } catch (error) {
     console.error(`[Server Error] ${botId}:`, error.message);
-    res.status(500).json({ reply: "Connection lost. Please check the server logs." });
+    res.status(500).json({ reply: "Server crashed. Check your terminal logs." });
   }
 });
 
-app.listen(port, () => console.log(`🚀 Protonix live at port ${port}`));
+app.listen(port, () => console.log(`🚀 Protonix live at http://localhost:${port}`));
