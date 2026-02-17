@@ -118,41 +118,33 @@ app.post('/api/chat', async (req, res) => {
     let modelPath = "";
     // let systemPrompt = "You are a helpful assistant.";
     let apiUrl = "https://openrouter.ai/api/v1/chat/completions";
-    let temperature = 0.4;
+   // --- UPDATED LOGIC FOR 2026 ---
+let temperature = 0.4; 
+let systemPrompt = "You are a helpful assistant.";
 
-    // --- BOT LOGIC ---
-    // --- UPDATED MODEL LOGIC for 2026  // Default
+if (botId === 'perplexity') {
+  apiKey = process.env.PERPLEXITY_OR_KEY;
+  modelPath = "perplexity/sonar"; 
+  systemPrompt = "You are a real-time search specialist. Always use the web for 2026 data. Provide citations.";
+} 
+else if (botId === 'gemini') {
+  apiKey = process.env.GEMINI_OR_KEY;
+  // Use Gemini 3 Flash for the best real-time grounding in 2026
+  modelPath = "google/gemini-3-flash-preview"; 
+  systemPrompt = "You are Google Gemini. Use Google Search grounding for real-time accuracy.";
+} 
+else if (botId === 'claude') {
+  apiKey = process.env.CLAUDE_OR_KEY;
+  // FIX: Generic Opus often returns 400. Use Sonnet 4 or the versioned Opus ID.
+  modelPath = "anthropic/claude-3.5-sonnet"; 
+}
+else if (botId === 'grok') {
+  apiKey = process.env.GROQ_API_KEY; 
+  modelPath = "x-ai/grok-2"; // Use the stable alias, not the dated version
+  temperature = 0.9; // EXTRA HIGH for 'masti'
+  systemPrompt = "You are Grok. You are savage, witty, and full of 'masti'. Use humor and talk about social media trends like a cool friend.";
+}
 
-   
-    let systemPrompt = "You are a helpful assistant.";
-
-    // --- 2026 UPDATED MODEL LOGIC ---
-    if (botId === 'perplexity') {
-      apiKey = process.env.PERPLEXITY_OR_KEY;
-      modelPath = "perplexity/sonar"; 
-      systemPrompt = "You are a real-time search engine. Use internet access for every query. Provide 2026 trends and news with citations.";
-    } 
-    else if (botId === 'gemini') {
-      apiKey = process.env.GEMINI_OR_KEY;
-      // UPDATED ID for 2026
-      modelPath = "google/gemini-2.0-pro-exp-02-05"; 
-      systemPrompt = "You are Google Gemini. Use Google Search grounding for real-time accuracy on current events.";
-    } 
-         else if (botId === 'claude') {
-      apiKey = process.env.CLAUDE_OR_KEY;
-      // CHANGE THIS LINE:
-      modelPath = "anthropic/claude-3.5-sonnet"; 
-    
-    }
-  else if (botId === 'grok') {
-      apiKey = process.env.GROQ_API_KEY; 
-      // FIX: Use the stable alias instead of the versioned -1212 ID
-      modelPath = "x-ai/grok-2"; 
-      
-      temperature = 0.9; // Keeps it fun and unpredictable
-      systemPrompt = "You are Grok. You are savage, witty, and full of 'masti'. Talk about social media trends like a cool, edgy friend. No boring talk!";
-    }
-    
     else if (botId === 'gpt') {
       apiKey = process.env.GPT_OR_KEY;
       modelPath = "openai/gpt-4o-2024-08-06";
@@ -168,12 +160,12 @@ app.post('/api/chat', async (req, res) => {
     // --- OPENROUTER API CALL ---
     const response = await fetch(apiUrl, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://protonix-ai.onrender.com", 
-        "X-Title": "Protonix AI",
-        "Content-Type": "application/json"
-      },
+    headers: {
+  "Authorization": `Bearer ${apiKey.trim()}`, // .trim() is CRITICAL
+  "HTTP-Referer": "https://protonix-ai.onrender.com",
+  "X-Title": "Protonix AI",
+  "Content-Type": "application/json"
+},
       body: JSON.stringify({
         "model": modelPath,
         "messages": [
