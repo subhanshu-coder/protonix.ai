@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Send, Settings, Menu, User, 
   Mic, MicOff, MessageSquare, X, Wand2, LogOut, Loader2, 
-  ArrowDown 
+  ArrowDown, Moon, Sun
 } from 'lucide-react';
 
 // Local Asset Imports
@@ -20,14 +20,12 @@ const ChatPage = ({ user, onLogout }) => {
   // State
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  
   const [selectedBot, setSelectedBot] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isComparisonMode, setIsComparisonMode] = useState(false);
-
   const [isListening, setIsListening] = useState(false);
   const [volume, setVolume] = useState(0);
   const [chatHistory, setChatHistory] = useState([]);
@@ -77,7 +75,27 @@ const ChatPage = ({ user, onLogout }) => {
       margin: 0 auto;
     }
 
-    /* Comparison Logic */
+    .settings-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .settings-content {
+      background: ${isDarkMode ? '#171719' : '#fff'};
+      width: 90%;
+      max-width: 400px;
+      padding: 24px;
+      border-radius: 24px;
+      border: 1px solid ${isDarkMode ? '#333' : '#eee'};
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
     .comparison-wrapper {
       display: flex;
       gap: 16px;
@@ -86,11 +104,11 @@ const ChatPage = ({ user, onLogout }) => {
       overflow-x: auto;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
-      scroll-snap-type: x mandatory; /* Snap effect for mobile */
+      scroll-snap-type: x mandatory;
     }
 
     .bot-column {
-      flex: 0 0 320px; /* Fixed width for columns */
+      flex: 0 0 320px;
       background: ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'};
       border-radius: 20px;
       border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
@@ -129,15 +147,7 @@ const ChatPage = ({ user, onLogout }) => {
       .sidebar-container.open { transform: translateX(0) !important; }
       .bot-grid-container { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 10px; }
       .bot-card { padding: 15px !important; min-height: 100px; }
-      
-      /* Mobile Snap Columns */
-      .bot-column {
-        flex: 0 0 85vw; /* Each bot takes 85% of screen width */
-        margin-right: 10px;
-      }
-      .comparison-wrapper {
-        padding: 10px;
-      }
+      .bot-column { flex: 0 0 85vw; margin-right: 10px; }
     }
   `;
 
@@ -232,7 +242,11 @@ const ChatPage = ({ user, onLogout }) => {
   };
 
   const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
-  const handleLogout = () => { onLogout(); navigate('/'); };
+  
+  const handleLogout = () => { 
+    onLogout(); 
+    navigate('/'); 
+  };
 
   const isMobile = window.innerWidth <= 768;
   const desktopSidebarWidth = sidebarOpen ? '280px' : '0';
@@ -240,6 +254,53 @@ const ChatPage = ({ user, onLogout }) => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: isDarkMode ? '#0d0d0e' : '#f8fafc', color: isDarkMode ? '#fff' : '#1e293b', overflow: 'hidden' }}>
       <style>{styles}</style>
+
+      {/* Settings Modal - Logout is INSIDE here */}
+      {showSettings && (
+        <div className="settings-modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="settings-content" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+              <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Settings</h2>
+              <X size={20} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => setShowSettings(false)} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.95rem' }}>Appearance</span>
+                <button 
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  style={{ background: isDarkMode ? '#222' : '#f0f0f0', border: 'none', padding: '8px 12px', borderRadius: '12px', color: 'inherit', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center' }}
+                >
+                  {isDarkMode ? <Moon size={16} /> : <Sun size={16} />}
+                  {isDarkMode ? 'Dark' : 'Light'}
+                </button>
+              </div>
+
+              <div style={{ borderTop: '1px solid #33333322', paddingTop: '20px' }}>
+                <button 
+                  onClick={handleLogout} 
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    color: '#ef4444', 
+                    border: 'none', 
+                    borderRadius: '12px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    gap: '10px' 
+                  }}
+                >
+                  <LogOut size={18} /> Logout session
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isMobile && sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       
@@ -342,13 +403,12 @@ const ChatPage = ({ user, onLogout }) => {
 {messages.map((m, i) => (
   <div key={i} style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexDirection: m.sender === 'user' ? 'row-reverse' : 'row' }}>
     
-    {/* FIXED: Reduced padding from 15px to 5px so the image is larger */}
     <div style={{ 
       width: '36px', 
       height: '36px', 
       background: 'white', 
       borderRadius: '8px', 
-      padding: '5px',  // <--- CHANGED THIS
+      padding: '5px',
       flexShrink: 0,
       display: 'flex',
       alignItems: 'center',
@@ -370,7 +430,6 @@ const ChatPage = ({ user, onLogout }) => {
           )}
         </div>
 
-{/* chat textarea container */}
         <div style={{ padding: '5px', maxWidth: '750px', width: '90%', margin: '0 auto', flexShrink: 0 }}>
           {isListening && (
             <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginBottom: '10px', alignItems: 'flex-end', height: '20px' }}>
