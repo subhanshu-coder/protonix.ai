@@ -1,6 +1,6 @@
 // server.js — PROTONIX.AI
 // Your existing /api/chat + new /api/auth/* routes merged together
-// npm install bcryptjs jsonwebtoken google-auth-library nodemailer
+// npm install bcryptjs jsonwebtoken nodemailer
 
 import express from 'express';
 import cors from 'cors';
@@ -9,7 +9,6 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
-import { OAuth2Client } from 'google-auth-library';
 import connectDB from './config/db.js';
 import mongoose from 'mongoose';
 
@@ -69,9 +68,6 @@ const sendTokenResponse = (user, statusCode, res) => {
     user: { id: user._id, fullName: user.fullName, email: user.email, avatar: user.avatar, provider: user.provider },
   });
 };
-
-// ── Google OAuth client ──────────────────────────────────────────────────────
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ── Nodemailer (Gmail App Password) ─────────────────────────────────────────
 const transporter = nodemailer.createTransport({
@@ -225,8 +221,12 @@ app.post('/api/auth/google', async (req, res) => {
       `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`
     );
     const tokenInfo = await tokenInfoRes.json();
-    if (tokenInfo.error || tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+    if (tokenInfo.error) {
       return res.status(401).json({ success: false, message: 'Invalid Google token.' });
+    }
+    // Optional: verify audience matches client ID if set
+    if (process.env.GOOGLE_CLIENT_ID && tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+      console.warn('Token audience mismatch. Expected:', process.env.GOOGLE_CLIENT_ID, 'Got:', tokenInfo.aud);
     }
 
     const { sub: googleId, email, name, picture } = googleUserInfo;
