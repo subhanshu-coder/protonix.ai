@@ -70,8 +70,7 @@ const LoginPage = ({ onLogin }) => {
     setShowPwd(false); setShowConf(false);
   };
   const handleSuccess = (data) => {
-    localStorage.setItem('protonix_token', data.token);
-    if (onLogin) onLogin(data.user);
+    if (onLogin) onLogin(data.user, data.token);
     navigate('/chat');
   };
 
@@ -96,6 +95,8 @@ const LoginPage = ({ onLogin }) => {
       } finally { setLoading(false); }
     },
     onError: () => setAlert({ type: 'error', text: 'Google sign-in was cancelled.' }),
+    flow: 'implicit',
+    ux_mode: 'popup',
   });
 
   const handleSignIn = async (e) => {

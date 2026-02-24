@@ -7,7 +7,7 @@ import './index.css';
 
 // NOTE: BrowserRouter stays inside App.jsx — do NOT add it here
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <GoogleOAuthProvider clientId="284288639436-mmf0fvddlca01cu9rhtrc5qrs00g8uqh.apps.googleusercontent.com">
+  <GoogleOAuthProvider clientId="284288639436-mmf0fvddlca01cu9rhtrc5qrs00g8uqh.apps.googleusercontent.com" onScriptLoad={() => console.log('Google OAuth loaded')}>
     <App />
   </GoogleOAuthProvider>
 );
