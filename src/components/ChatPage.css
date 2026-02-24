@@ -7,6 +7,15 @@
   margin: 0 auto;
 }
 
+/* --- COMPARISON MODE TOGGLE STYLES --- */
+.comparison-toggle-btn {
+  transition: all 0.2s ease;
+}
+
+.comparison-toggle-btn:hover {
+  transform: translateY(-2px);
+}
+
 /* --- CUSTOM SCROLLBARS --- */
 .chat-scroll-container::-webkit-scrollbar { 
   width: 6px; 

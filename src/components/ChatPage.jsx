@@ -30,6 +30,8 @@ const ChatPage = ({ user, onLogout }) => {
   const [volume, setVolume] = useState(0);
   const [chatHistory, setChatHistory] = useState([]);
   const [isPurifying, setIsPurifying] = useState(false);
+  const [selectedBots, setSelectedBots] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
 
   // Refs
   const recognitionRef = useRef(null);
@@ -53,6 +55,69 @@ const ChatPage = ({ user, onLogout }) => {
 
   const isChatEmpty = !selectedBot && messages.length === 0;
 
+  // Helper function to get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // Load chat history from localStorage for current user
+  useEffect(() => {
+    if (user?.email) {
+      const storageKey = `protonix_chat_history_${user.email}`;
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          setChatHistory(JSON.parse(saved));
+        }
+      } catch (err) {
+        console.error('Error loading chat history:', err);
+      }
+    }
+  }, [user?.email]);
+
+  // Save chat to history and localStorage
+  const saveChat = (chatId, title, messages) => {
+    if (!user?.email) return;
+    const storageKey = `protonix_chat_history_${user.email}`;
+    const storageMessagesKey = `protonix_chat_messages_${user.email}_${chatId}`;
+    
+    try {
+      // Save messages
+      localStorage.setItem(storageMessagesKey, JSON.stringify(messages));
+      
+      // Update history
+      setChatHistory(prev => {
+        const updated = prev.filter(h => h.id !== chatId);
+        const newHistory = [{ id: chatId, title, timestamp: new Date().toISOString() }, ...updated];
+        localStorage.setItem(storageKey, JSON.stringify(newHistory));
+        return newHistory;
+      });
+    } catch (err) {
+      console.error('Error saving chat:', err);
+    }
+  };
+
+  // Load previous chat
+  const loadChat = (chatId) => {
+    if (!user?.email) return;
+    const storageMessagesKey = `protonix_chat_messages_${user.email}_${chatId}`;
+    try {
+      const saved = localStorage.getItem(storageMessagesKey);
+      if (saved) {
+        setMessages(JSON.parse(saved));
+        setCurrentChatId(chatId);
+        setSelectedBot(null);
+        setIsComparisonMode(false);
+        if (window.innerWidth <= 768) setSidebarOpen(false);
+      }
+    } catch (err) {
+      console.error('Error loading chat:', err);
+    }
+  };
+  
   const handleScroll = () => {
     if (chatContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
@@ -185,29 +250,34 @@ const ChatPage = ({ user, onLogout }) => {
     if (!inputMessage.trim()) return;
     
     let targets = [];
-    const lowerInput = inputMessage.toLowerCase();
     
-    if (lowerInput.includes("@all")) {
-      targets = bots;
-      setIsComparisonMode(true);
+    // Use selected bots from toggles if in comparison mode
+    if (isComparisonMode && selectedBots.length > 0) {
+      targets = selectedBots;
+    } else if (selectedBot) {
+      targets = [selectedBot];
     } else {
-      const tagged = bots.filter(b => lowerInput.includes(`@${b.id}`));
-      targets = tagged.length > 0 ? tagged : (selectedBot ? [selectedBot] : []);
-      setIsComparisonMode(false);
-    }
-    
-    if (targets.length === 0) {
-        const deepseek = bots.find(b => b.id === 'deepseek');
-        targets = [deepseek];
-        setSelectedBot(deepseek);
+      const deepseek = bots.find(b => b.id === 'deepseek');
+      targets = [deepseek];
+      setSelectedBot(deepseek);
     }
 
     const userMsg = { text: inputMessage, sender: 'user', time: new Date().toLocaleTimeString() };
-    setMessages(prev => [...prev, userMsg]);
     
-    if (messages.length === 0) {
-        setChatHistory([{ id: Date.now(), title: inputMessage }, ...chatHistory]);
-    }
+    setMessages(prev => {
+      const newMessages = [...prev, userMsg];
+      
+      // Auto-save chat
+      if (!currentChatId) {
+        const chatId = Date.now();
+        setCurrentChatId(chatId);
+        saveChat(chatId, inputMessage, newMessages);
+      } else {
+        saveChat(currentChatId, inputMessage, newMessages);
+      }
+      
+      return newMessages;
+    });
 
     targets.forEach(async (bot) => {
       const tempId = Date.now() + Math.random();
@@ -229,12 +299,26 @@ const ChatPage = ({ user, onLogout }) => {
         const data = await response.json();
         setMessages(prev => {
           const filtered = prev.filter(msg => msg.tempId !== tempId);
-          return [...filtered, { text: data.reply, sender: 'bot', botId: bot.id, botLogo: bot.logo }];
+          const newMessages = [...filtered, { text: data.reply, sender: 'bot', botId: bot.id, botLogo: bot.logo }];
+          
+          // Auto-save after bot response
+          if (currentChatId) {
+            saveChat(currentChatId, inputMessage, newMessages);
+          }
+          
+          return newMessages;
         });
       } catch (error) {
         setMessages(prev => {
            const filtered = prev.filter(msg => msg.tempId !== tempId);
-           return [...filtered, { text: "Error: No response.", sender: 'bot', botId: bot.id, botLogo: bot.logo }];
+           const newMessages = [...filtered, { text: "Error: No response.", sender: 'bot', botId: bot.id, botLogo: bot.logo }];
+           
+           // Auto-save after error
+           if (currentChatId) {
+             saveChat(currentChatId, inputMessage, newMessages);
+           }
+           
+           return newMessages;
         });
       }
     });
@@ -265,6 +349,11 @@ const ChatPage = ({ user, onLogout }) => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', padding: '12px', borderRadius: '10px' }}>
+                <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>Email</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: '500' }}>{user?.email || 'Not available'}</span>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.95rem' }}>Appearance</span>
                 <button 
@@ -324,12 +413,12 @@ const ChatPage = ({ user, onLogout }) => {
             <span style={{ fontWeight: 'bold', opacity: 0.5, fontSize: '12px' }}>MENU</span>
             {isMobile && <X style={{cursor:'pointer'}} onClick={() => setSidebarOpen(false)} />}
           </div>
-          <button onClick={() => {setMessages([]); setSelectedBot(null); setIsComparisonMode(false); if(isMobile) setSidebarOpen(false);}} style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>+ New Chat</button>
+          <button onClick={() => {setMessages([]); setSelectedBot(null); setSelectedBots([]); setIsComparisonMode(false); setCurrentChatId(null); if(isMobile) setSidebarOpen(false);}} style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>+ New Chat</button>
           
           <div style={{ marginTop: '20px' }}>
             <p style={{ fontSize: '11px', opacity: 0.5, fontWeight: 'bold' }}>HISTORY</p>
             {chatHistory.map(h => (
-              <div key={h.id} style={{ padding: '10px', fontSize: '13px', opacity: 0.7, display: 'flex', gap: '8px', cursor: 'pointer' }}>
+              <div key={h.id} onClick={() => loadChat(h.id)} style={{ padding: '10px', fontSize: '13px', opacity: 0.7, display: 'flex', gap: '8px', cursor: 'pointer', borderRadius: '8px', transition: 'background 0.2s', backgroundColor: currentChatId === h.id ? 'rgba(79, 70, 229, 0.2)' : 'transparent' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = currentChatId === h.id ? 'rgba(79, 70, 229, 0.2)' : 'transparent'}>
                 <MessageSquare size={14} /> 
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.title}</span>
               </div>
@@ -351,14 +440,26 @@ const ChatPage = ({ user, onLogout }) => {
           <div style={{width: 20}} />
         </header>
 
+        {/* User Greeting Banner */}
+        {messages.length > 0 && (
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #33333322', background: isDarkMode ? 'rgba(79, 70, 229, 0.05)' : 'rgba(79, 70, 229, 0.02)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div>
+              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '4px', fontFamily: 'Georgia, serif' }}>
+                {getGreeting()} {user?.firstName || user?.email?.split('@')[0]}
+              </div>
+              <div style={{ fontSize: '12px', opacity: 0.5 }}>{user?.email}</div>
+            </div>
+          </div>
+        )}
+
         <div 
           ref={chatContainerRef} 
           onScroll={handleScroll}
           className="chat-scroll-container" 
           style={{ 
             flex: isChatEmpty ? '0 0 auto' : '1', 
-            overflowY: isComparisonMode ? 'hidden' : 'auto', 
-            padding: isComparisonMode ? '0' : '40px', 
+            overflowY: isComparisonMode ? 'auto' : 'auto', 
+            padding: isComparisonMode ? '20px' : '40px', 
             display: 'flex', 
             flexDirection: 'column'
           }}
@@ -368,7 +469,7 @@ const ChatPage = ({ user, onLogout }) => {
               <h1 style={{ fontSize: '25px', fontWeight: '900', marginBottom: '30px' }}>Choose Intelligence</h1>
               <div className="bot-grid-container">
                 {bots.map(bot => (
-                  <div key={bot.id} className="bot-card" onClick={() => setSelectedBot(bot)} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center' }}>
+                  <div key={bot.id} className="bot-card" onClick={() => {setSelectedBot(bot); setSelectedBots([bot]); setIsComparisonMode(false);}} style={{ background: isDarkMode ? '#1e1e21' : '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #33333322', cursor: 'pointer', textAlign: 'center' }}>
                     <div style={{ width: '50px', height: '40px', background: 'white', borderRadius: '10px', padding: '8px', margin: '0 auto 10px' }}>
                       <img src={bot.logo} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={bot.name} />
                     </div>
@@ -376,27 +477,76 @@ const ChatPage = ({ user, onLogout }) => {
                   </div>
                 ))}
               </div>
+              <div style={{ marginTop: '30px', textAlign: 'center' }}>
+                <button onClick={() => {setIsComparisonMode(true); setSelectedBot(null);}} style={{ padding: '12px 24px', background: 'rgba(79, 70, 229, 0.2)', border: '1px solid #4f46e5', color: '#4f46e5', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Compare Multiple Models
+                </button>
+              </div>
             </div>
           ) : isComparisonMode ? (
-            <div className="comparison-wrapper">
-              {bots.map(bot => (
-                <div key={bot.id} className="bot-column">
-                  <div className="column-header">
-                    <img src={bot.logo} style={{ width: 20, height: 20 }} alt={bot.name} />
-                    <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{bot.name}</span>
-                  </div>
-                  <div className="column-messages">
-                    {messages.filter(m => m.botId === bot.id || m.sender === 'user').map((m, i) => (
-                      <div key={i} style={{ marginBottom: '15px', textAlign: m.sender === 'user' ? 'right' : 'left' }}>
-                        <div style={{ display: 'inline-block', padding: '10px 14px', borderRadius: '15px', background: m.sender === 'user' ? '#4f46e5' : '#252529', fontSize: '13px', maxWidth: '95%' }}>
-                          {m.text}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid #33333322' }}>
+                {bots.map(bot => (
+                  <button
+                    key={bot.id}
+                    onClick={() => {
+                      setSelectedBots(prev => 
+                        prev.find(b => b.id === bot.id)
+                          ? prev.filter(b => b.id !== bot.id)
+                          : [...prev, bot]
+                      );
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      border: selectedBots.find(b => b.id === bot.id) ? '2px solid #4f46e5' : `1px solid ${isDarkMode ? '#33333322' : '#ccc'}`,
+                      background: selectedBots.find(b => b.id === bot.id) ? 'rgba(79, 70, 229, 0.1)' : isDarkMode ? '#1e1e21' : '#fff',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: selectedBots.find(b => b.id === bot.id) ? '600' : '500',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <img src={bot.logo} style={{ width: 16, height: 16 }} alt={bot.name} />
+                    {bot.name}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: selectedBots.length > 0 ? `repeat(${Math.min(selectedBots.length, 2)}, 1fr)` : '1fr', gap: '20px' }}>
+                {selectedBots.length > 0 ? selectedBots.map(bot => (
+                  <div key={bot.id} style={{ 
+                    background: isDarkMode ? '#1e1e21' : '#fff',
+                    borderRadius: '16px',
+                    border: `1px solid ${isDarkMode ? '#33333322' : '#eee'}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '500px'
+                  }}>
+                    <div style={{ padding: '16px', borderBottom: `1px solid ${isDarkMode ? '#33333322' : '#eee'}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src={bot.logo} style={{ width: 24, height: 24 }} alt={bot.name} />
+                      <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{bot.name}</span>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column' }}>
+                      {messages.filter(m => m.botId === bot.id || m.sender === 'user').map((m, i) => (
+                        <div key={i} style={{ marginBottom: '12px', display: 'flex', justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                          <div style={{ padding: '10px 14px', borderRadius: '12px', background: m.sender === 'user' ? '#4f46e5' : isDarkMode ? '#252529' : '#f0f0f0', fontSize: '12px', maxWidth: '90%' }}>
+                            {m.text}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                )) : (
+                  <div style={{ textAlign: 'center', opacity: 0.5, paddingTop: '40px' }}>
+                    <p>Select models above to compare responses</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div style={{ maxWidth: '850px', margin: '0 auto', width: '100%' }}>
