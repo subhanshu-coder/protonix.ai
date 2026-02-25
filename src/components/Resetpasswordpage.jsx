@@ -7,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import LogoImage from '../assets/LogoImage.svg';
 import './LoginPage.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || '';
 
 const EyeOpen = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

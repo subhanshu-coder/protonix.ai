@@ -18,16 +18,20 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT;
 
-// Dynamic CORS configuration to avoid hardcoded secrets
+// CORS — all origins from env vars, no hardcoded values
 const allowedOrigins = [
-  'https://protonixai.netlify.app',
-  process.env.CLIENT_URL
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URL_ALT,
 ].filter(Boolean);
 
 app.use(cors({
-  origin: allowedOrigins.length > 0 ? allowedOrigins : 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (!allowedOrigins.length || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 
@@ -158,7 +162,7 @@ app.post('/api/chat', async (req, res) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey.trim()}`,
-        'HTTP-Referer': process.env.CLIENT_URL || 'https://protonixai.netlify.app',
+        'HTTP-Referer': process.env.CLIENT_URL || '',
         'X-Title': 'Protonix AI',
         'Content-Type': 'application/json',
       },
