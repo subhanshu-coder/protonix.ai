@@ -20,7 +20,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const port = process.env.PORT || 5000;
 
-// CORRECTION: Cleaned up CORS to prevent Netlify secret detection
+// Dynamic CORS configuration to avoid hardcoded secrets
 const allowedOrigins = [
   'https://protonixai.netlify.app',
   process.env.CLIENT_URL
@@ -112,7 +112,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ═══════════════════════════════════════════════════════════
-// CHAT ROUTE
+// CHAT ROUTE (OpenRouter Integration)
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
@@ -176,23 +176,23 @@ app.post('/api/chat', async (req, res) => {
     res.json({ reply: data.choices[0].message.content });
 
   } catch (error) {
-    res.status(500).json({ reply: 'Server Error.' });
+    res.status(500).json({ reply: 'Server Error during chat processing.' });
   }
 });
 
 // ═══════════════════════════════════════════════════════════
-// AUTH ROUTES (Signup, Login, Google, Password Reset)
+// AUTH ROUTES
 // ═══════════════════════════════════════════════════════════
 
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
     const existing = await User.findOne({ email });
-    if (existing) return res.status(409).json({ success: false, message: 'User exists.' });
+    if (existing) return res.status(409).json({ success: false, message: 'User already exists.' });
 
     const user = await User.create({ fullName, email, password, provider: 'local' });
     sendTokenResponse(user, 201, res);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -200,10 +200,10 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: 'Invalid credentials.' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
     sendTokenResponse(user, 200, res);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 app.post('/api/auth/google', async (req, res) => {
@@ -213,17 +213,24 @@ app.post('/api/auth/google', async (req, res) => {
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] });
     if (!user) {
-      user = await User.create({ fullName: name, email, googleId, avatar: picture, provider: 'google', isVerified: true });
+      user = await User.create({
+        fullName: name,
+        email,
+        googleId,
+        avatar: picture,
+        provider: 'google',
+        isVerified: true
+      });
     }
     sendTokenResponse(user, 200, res);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { res.status(500).json({ success: false, message: 'Google Auth Error.' }); }
 });
 
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(200).json({ message: 'Check your email.' });
+    if (!user) return res.status(200).json({ success: true, message: 'Check your email.' });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
@@ -234,14 +241,20 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: user.email,
-      subject: 'Password Reset',
-      html: `<a href="${resetUrl}">Reset Password</a>`,
+      subject: 'Password Reset — PROTONIX.AI',
+      html: `<div style="padding:20px; border-radius:10px; background-color:#f4f4f4;">
+               <h2>Reset Your Password</h2>
+               <p>Click below to reset your password:</p>
+               <a href="${resetUrl}" style="padding:10px 20px; background-color:#6366f1; color:white; text-decoration:none; border-radius:5px;">Reset Password</a>
+             </div>`,
     });
-    res.status(200).json({ message: 'Reset email sent.' });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+    res.status(200).json({ success: true, message: 'Reset email sent.' });
+  } catch (err) { res.status(500).json({ success: false, message: 'Error sending reset email.' }); }
 });
 
-// Health check
-app.get('/', (req, res) => res.json({ status: 'ok' }));
+// ═══════════════════════════════════════════════════════════
+// START SERVER
+// ═══════════════════════════════════════════════════════════
+app.get('/', (req, res) => res.json({ status: 'ok', message: 'Protonix AI Backend Running' }));
 
-app.listen(port, () => console.log(`🚀 Protonix running on port ${port}`));
+app.listen(port, () => console.log(`🚀 Protonix live on port ${port}`));
