@@ -5,7 +5,9 @@ import CardSwap, { Card } from './CardSwap';
 import LogoImage from '../assets/LogoImage.svg';
 import './LoginPage.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// CORRECTION: Ensure this variable matches the key you set in Netlify exactly.
+// The fallback is only for local development.
+const API = import.meta.env.VITE_API_URL;
 
 const EyeOpen = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -210,7 +212,6 @@ const LoginPage = ({ onLogin }) => {
             <Alert/>
             <GBtn/>
             <Divider/>
-            {/* ✅ autoComplete="off" on form stops browser autofill */}
             <form onSubmit={handleSignIn} className="compact-form" autoComplete="off">
               <div className="form-group">
                 <input
