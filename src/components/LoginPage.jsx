@@ -7,7 +7,7 @@ import './LoginPage.css';
 
 // CORRECTION: Ensure this variable matches the key you set in Netlify exactly.
 // The fallback is only for local development.
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "https://protonix-ai.onrender.com";
 
 const EyeOpen = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
