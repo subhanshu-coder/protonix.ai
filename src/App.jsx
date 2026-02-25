@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './components/LoginPage';
 import ChatPage from './components/ChatPage'; // Renamed from Dashboard to ChatPage for your workspace
 import LandingPage from './components/LandingPage';
+import ResetPasswordPage from './components/Resetpasswordpage';
 
 import './App.css'; //
 
@@ -17,9 +18,9 @@ function App() {
   useEffect(() => {
     const checkAuthStatus = () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const userData = localStorage.getItem('userData');
-        
+        const token = localStorage.getItem('protonix_token');
+        const userData = localStorage.getItem('protonix_user');
+
         if (token && userData) {
           const parsedUser = JSON.parse(userData);
           setIsAuthenticated(true);
@@ -28,8 +29,8 @@ function App() {
       } catch (error) {
         console.error('Error parsing user data:', error);
         // Clear corrupted data
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
+        localStorage.removeItem('protonix_token');
+        localStorage.removeItem('protonix_user');
       } finally {
         setLoading(false);
       }
@@ -41,9 +42,9 @@ function App() {
   const handleLogin = (userData, token) => {
     try {
       // Store authentication data
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('userData', JSON.stringify(userData));
-      
+      localStorage.setItem('protonix_token', token);
+      localStorage.setItem('protonix_user', JSON.stringify(userData));
+
       // Update state
       setIsAuthenticated(true);
       setUser(userData);
@@ -54,9 +55,9 @@ function App() {
 
   const handleLogout = () => {
     // Clear authentication data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    
+    localStorage.removeItem('protonix_token');
+    localStorage.removeItem('protonix_user');
+
     // Update state
     setIsAuthenticated(false);
     setUser(null);
@@ -89,42 +90,43 @@ function App() {
       </div>
     );
   }
-  
+
   // Basename for GitHub Pages support
-  const basename = window.location.hostname.includes('github.io') 
-    ? '/protonix.ai' 
+  const basename = window.location.hostname.includes('github.io')
+    ? '/protonix.ai'
     : '/';
-  
+
   return (
     <Router basename={basename}>
       <Routes>
         {/* Public Landing Page */}
         <Route path="/" element={<LandingPage />} />
-        
+
         {/* Login: Opens first, then redirects to /chat */}
-        <Route 
-          path="/login" 
+        <Route
+          path="/login"
           element={
             !isAuthenticated ? (
               <LoginPage onLogin={handleLogin} />
             ) : (
               <Navigate to="/chat" replace /> // Redirects to Chat chatbot page after login
             )
-          } 
+          }
         />
-        
+
+        <Route path="/reset-password/:token" element={<ResetPasswordPage onLogin={handleLogin} />} />
         {/* Protected Chat Route: Only accessible if authenticated */}
-        <Route 
-          path="/chat" 
+        <Route
+          path="/chat"
           element={
             isAuthenticated ? (
               <ChatPage user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
-        
+
         {/* Fallback route - redirects unknown paths to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

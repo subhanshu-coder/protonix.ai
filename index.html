@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- <link rel="icon" type="image/svg+xml" href="/favicon.ico" /> -->
     <title>AI ChatBot Hub</title>
+    <link rel="icon" href="data:,">
+<!-- ```
+That's it, error gone. ✅
+
+---
+
+**Error 2 — `Cross-Origin-Opener-Policy` warnings** — NOT an error. Chrome prints this whenever Google OAuth popup opens. It does not break anything. **Ignore forever.** ✅
+
+---
+
+**Error 3 — `500 on /api/auth/google`** — This is the real problem. I need to see your terminal.
+
+Look at the window where you ran `node server/server.js`. Right after the 500 error happens, your terminal prints the exact reason. It looks like one of these:
+```
+Google auth error: E11000 duplicate key...
+Google auth error: Cannot read properties...  
+Google auth error: ValidationError... -->
 </head>
 <body>
     <div id="root"></div>
