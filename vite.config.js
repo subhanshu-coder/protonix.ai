@@ -1,22 +1,16 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // CHANGE THIS: Add your repository name between slashes
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-      },
-    },
-  },
+
   server: {
     port: 5173,
-    host: 'localhost',
-    open: false
-  }
-})
+
+    // ── Fix: Cross-Origin-Opener-Policy blocking Google OAuth popup ──
+    headers: {
+      'Cross-Origin-Opener-Policy':   'same-origin-allow-popups',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none',
+    },
+  },
+});
