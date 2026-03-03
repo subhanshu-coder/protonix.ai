@@ -136,14 +136,41 @@ console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide')
 
 // ═══════════════════════════════════════════════════════════
 // CHAT ROUTE
-// All bots go through OpenRouter
-// "Grok" on frontend → powered by groq/llama via OpenRouter
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
   if (!message || !botId) return res.status(400).json({ reply: 'Missing message or botId.' });
 
   try {
+    // ── Grok: handled separately via Groq's own API ──
+    if (botId === 'grok') {
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY.trim()}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          model:       'meta-llama/llama-4-maverick-17b-128e-instruct',
+          messages:    [
+            { role: 'system', content: 'You are a highly capable AI assistant. Be concise, smart and helpful.' },
+            { role: 'user',   content: message },
+          ],
+          max_tokens:  800,
+          temperature: 0.8,
+        }),
+      });
+
+      const groqData = await groqResponse.json();
+      console.log('grok status:', groqResponse.status, JSON.stringify(groqData).slice(0, 200));
+
+      if (!groqResponse.ok || groqData.error) {
+        return res.status(400).json({ reply: `Error: ${groqData.error?.message || 'Groq API error'}` });
+      }
+      return res.json({ reply: groqData.choices[0].message.content });
+    }
+
+    // ── All other bots: OpenRouter ──
     let apiKey = '', modelPath = '', temperature = 0.4;
     let systemPrompt = 'You are a helpful assistant.';
     const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
@@ -157,14 +184,6 @@ app.post('/api/chat', async (req, res) => {
     else if (botId === 'claude')   { apiKey = process.env.CLAUDE_OR_KEY;   modelPath = 'anthropic/claude-3.5-sonnet'; }
     else if (botId === 'gpt')      { apiKey = process.env.GPT_OR_KEY;      modelPath = 'openai/gpt-4o-mini'; }
     else if (botId === 'deepseek') { apiKey = process.env.DEEPSEEK_OR_KEY; modelPath = 'deepseek/deepseek-chat'; }
-
-    // "Grok" on frontend — powered by groq/llama via OpenRouter (fast + free)
-    else if (botId === 'grok') {
-      apiKey       = process.env.GROQ_API_KEY;
-      modelPath    = 'meta-llama/llama-4-maverick:free';
-      temperature  = 0.8;
-      systemPrompt = 'You are a highly capable AI assistant. Be concise, smart and helpful.';
-    }
 
     if (!apiKey) return res.status(400).json({ reply: `❌ API key not found for: ${botId}` });
 
