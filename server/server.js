@@ -12,7 +12,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,43 +108,28 @@ const sendTokenResponse = (user, statusCode, res) => {
   });
 };
 
-// ═══════════════════════════════════════════════════════════
-// EMAIL — Brevo SMTP
-// ✅ Works on Render free tier
-// ✅ Sends to ANY email address worldwide
-// ✅ 300 free emails per day
-// Setup: brevo.com → SMTP & API → SMTP → copy key
-// ═══════════════════════════════════════════════════════════
-const transporter = nodemailer.createTransport({
-  host:   'smtp-relay.brevo.com',
-  port:   587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_USER,  // your brevo login email
-    pass: process.env.BREVO_PASS,  // your brevo SMTP key (xsmtpsib-...)
-  },
-});
-
+// NEW — Brevo HTTP API (works on Render free tier, any email)
 const sendEmail = async ({ to, subject, html }) => {
-  const info = await transporter.sendMail({
-    from:    `"Protonix.AI" <${process.env.BREVO_USER}>`,
-    to,       // ANY email address worldwide
-    subject,
-    html,
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept':       'application/json',
+      'api-key':      process.env.BREVO_API_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender:   { name: 'Protonix.AI', email: process.env.BREVO_USER },
+      to:       [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
-  return info;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Brevo API error');
+  return data;
 };
 
-// Verify on startup
-(async () => {
-  try {
-    await transporter.verify();
-    console.log('✅ Email (Brevo SMTP) ready — sends to any email worldwide');
-  } catch (err) {
-    console.error('❌ Brevo email error:', err.message);
-  }
-})();
-
+console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide');
 // ═══════════════════════════════════════════════════════════
 // CHAT ROUTE
 // ═══════════════════════════════════════════════════════════
