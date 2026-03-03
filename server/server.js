@@ -153,7 +153,7 @@ app.post('/api/chat', async (req, res) => {
       modelPath    = 'perplexity/sonar';
       systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.';
     }
-    else if (botId === 'gemini')   { apiKey = process.env.GEMINI_OR_KEY;   modelPath = 'google/gemini-2.5-flash-preview'; }
+    else if (botId === 'gemini')   { apiKey = process.env.GEMINI_OR_KEY;   modelPath = 'google/gemini-2.0-flash-001'; }
     else if (botId === 'claude')   { apiKey = process.env.CLAUDE_OR_KEY;   modelPath = 'anthropic/claude-3.5-sonnet'; }
     else if (botId === 'gpt')      { apiKey = process.env.GPT_OR_KEY;      modelPath = 'openai/gpt-4o-mini'; }
     else if (botId === 'deepseek') { apiKey = process.env.DEEPSEEK_OR_KEY; modelPath = 'deepseek/deepseek-chat'; }
