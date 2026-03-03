@@ -6,7 +6,6 @@ import Home from './Home';
 import Features from './Features';
 import About from './About';
 import SlidingLogoMarquee from './SlidingLogoMarquee';
-import PixelCard from './PixelCard';
 import HowItWorks from './HowItWorks';
 import FAQs from './FAQs';
 import GetInTouch from './GetInTouch';
@@ -214,7 +213,6 @@ const LandingPage = () => {
           className="marquee-special-bg"
         />
 
-        <PixelCard variant="skyblue" className="about-pixel-card" />
         
         <HowItWorks />
         
