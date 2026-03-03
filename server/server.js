@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════════
 // server.js — PROTONIX.AI Complete Backend
-// Email: Brevo SMTP — works on Render, sends to ANY email
 // ═══════════════════════════════════════════════════════════
 
 import express from 'express';
@@ -12,7 +11,6 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-// import nodemailer from 'nodemailer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,7 +106,12 @@ const sendTokenResponse = (user, statusCode, res) => {
   });
 };
 
-// NEW — Brevo HTTP API (works on Render free tier, any email)
+// ═══════════════════════════════════════════════════════════
+// EMAIL — Brevo HTTP API
+// ✅ Works on Render free tier (no SMTP ports)
+// ✅ Sends to ANY email address worldwide
+// ✅ 300 free emails/day
+// ═══════════════════════════════════════════════════════════
 const sendEmail = async ({ to, subject, html }) => {
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -118,8 +121,8 @@ const sendEmail = async ({ to, subject, html }) => {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      sender:   { name: 'Protonix.AI', email: process.env.BREVO_USER },
-      to:       [{ email: to }],
+      sender:      { name: 'Protonix.AI', email: process.env.BREVO_USER },
+      to:          [{ email: to }],
       subject,
       htmlContent: html,
     }),
@@ -130,8 +133,11 @@ const sendEmail = async ({ to, subject, html }) => {
 };
 
 console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide');
+
 // ═══════════════════════════════════════════════════════════
 // CHAT ROUTE
+// All bots go through OpenRouter
+// "Grok" on frontend → powered by groq/llama via OpenRouter
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
@@ -142,38 +148,54 @@ app.post('/api/chat', async (req, res) => {
     let systemPrompt = 'You are a helpful assistant.';
     const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-    if      (botId === 'perplexity') { apiKey = process.env.PERPLEXITY_OR_KEY; modelPath = 'perplexity/sonar'; systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.'; }
-    else if (botId === 'gemini')     { apiKey = process.env.GEMINI_OR_KEY;     modelPath = 'google/gemini-2.5-flash-preview'; }
-    else if (botId === 'claude')     { apiKey = process.env.CLAUDE_OR_KEY;     modelPath = 'anthropic/claude-3.5-sonnet'; }
-    else if (botId === 'grok')       { apiKey = process.env.GROQ_API_KEY;      modelPath = 'x-ai/grok-2'; temperature = 0.9; }
-    else if (botId === 'gpt')        { apiKey = process.env.GPT_OR_KEY;        modelPath = 'openai/gpt-4o-2024-08-06'; }
-    else if (botId === 'deepseek')   { apiKey = process.env.DEEPSEEK_OR_KEY;   modelPath = 'deepseek/deepseek-chat'; }
+    if      (botId === 'perplexity') {
+      apiKey       = process.env.PERPLEXITY_OR_KEY;
+      modelPath    = 'perplexity/sonar';
+      systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.';
+    }
+    else if (botId === 'gemini')   { apiKey = process.env.GEMINI_OR_KEY;   modelPath = 'google/gemini-2.5-flash-preview'; }
+    else if (botId === 'claude')   { apiKey = process.env.CLAUDE_OR_KEY;   modelPath = 'anthropic/claude-3.5-sonnet'; }
+    else if (botId === 'gpt')      { apiKey = process.env.GPT_OR_KEY;      modelPath = 'openai/gpt-4o-mini'; }
+    else if (botId === 'deepseek') { apiKey = process.env.DEEPSEEK_OR_KEY; modelPath = 'deepseek/deepseek-chat'; }
 
-    if (!apiKey) return res.status(400).json({ reply: 'Error: API Key missing.' });
+    // "Grok" on frontend — powered by groq/llama via OpenRouter (fast + free)
+    else if (botId === 'grok') {
+      apiKey       = process.env.GROQ_API_KEY;
+      modelPath    = 'meta-llama/llama-4-maverick';
+      temperature  = 0.8;
+      systemPrompt = 'You are a highly capable AI assistant. Be concise, smart and helpful.';
+    }
+
+    if (!apiKey) return res.status(400).json({ reply: `❌ API key not found for: ${botId}` });
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey.trim()}`,
-        'HTTP-Referer': process.env.CLIENT_URL || '',
-        'X-Title': 'Protonix AI',
-        'Content-Type': 'application/json',
+        'HTTP-Referer':  process.env.CLIENT_URL || '',
+        'X-Title':       'Protonix AI',
+        'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        model: modelPath,
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
-        max_tokens: 800,
+        model:       modelPath,
+        messages:    [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
+        max_tokens:  800,
         temperature,
       }),
     });
 
     const data = await response.json();
-    if (data.error) return res.status(400).json({ reply: `AI Error: ${data.error.message}` });
+    console.log(`${botId} status:`, response.status, JSON.stringify(data).slice(0, 200));
+
+    if (!response.ok || data.error) {
+      return res.status(400).json({ reply: `Error: ${data.error?.message || 'API error — check OpenRouter credits'}` });
+    }
+
     res.json({ reply: data.choices[0].message.content });
 
   } catch (err) {
     console.error('Chat error:', err.message);
-    res.status(500).json({ reply: 'Server Error during chat processing.' });
+    res.status(500).json({ reply: `Server Error: ${err.message}` });
   }
 });
 
@@ -225,7 +247,7 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// FORGOT PASSWORD — sends reset link to ANY email
+// FORGOT PASSWORD
 // ═══════════════════════════════════════════════════════════
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
@@ -233,16 +255,11 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' });
 
-    // Always return success — don't reveal if email exists (security)
-    if (!user) {
-      return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' });
-    }
-
-    // Generate secure random token
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.passwordResetToken   = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    user.passwordResetExpires = Date.now() + 15 * 60 * 1000;
     await user.save({ validateBeforeSave: false });
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
@@ -252,48 +269,35 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       subject: 'Reset Your Password — PROTONIX.AI',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f0f1a;color:#fff;border-radius:14px;overflow:hidden;">
-
           <div style="padding:28px 32px;background:linear-gradient(135deg,#0d1117,#1a1f35);border-bottom:1px solid rgba(255,255,255,0.07);text-align:center;">
-            <h1 style="margin:0;font-size:1.6rem;font-weight:800;color:#fff;">
-              PROTONIX<span style="color:#00e5ff;">.AI</span>
-            </h1>
-            <p style="margin:4px 0 0;color:rgba(255,255,255,0.35);font-size:0.78rem;letter-spacing:0.08em;">All AIs, One Tab</p>
+            <h1 style="margin:0;font-size:1.6rem;font-weight:800;color:#fff;">PROTONIX<span style="color:#00e5ff;">.AI</span></h1>
+            <p style="margin:4px 0 0;color:rgba(255,255,255,0.35);font-size:0.78rem;">All AIs, One Tab</p>
           </div>
-
           <div style="padding:36px 32px;">
             <h2 style="margin:0 0 10px;font-size:1.2rem;color:#fff;">Reset Your Password</h2>
             <p style="color:rgba(255,255,255,0.55);line-height:1.65;margin:0 0 28px;font-size:0.92rem;">
-              We received a request to reset the password for your Protonix.AI account.
-              Click the button below — valid for <strong style="color:#fbbf24;">15 minutes</strong>.
+              Click the button below to reset your password. Valid for <strong style="color:#fbbf24;">15 minutes</strong>.
             </p>
-
             <div style="text-align:center;margin:28px 0;">
-              <a href="${resetUrl}"
-                style="display:inline-block;padding:13px 34px;background:linear-gradient(135deg,#00e5ff,#0080ff);color:#000;font-weight:700;font-size:0.95rem;text-decoration:none;border-radius:10px;">
+              <a href="${resetUrl}" style="display:inline-block;padding:13px 34px;background:linear-gradient(135deg,#00e5ff,#0080ff);color:#000;font-weight:700;font-size:0.95rem;text-decoration:none;border-radius:10px;">
                 Reset Password →
               </a>
             </div>
-
             <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;">
               <p style="margin:0;color:rgba(255,255,255,0.38);font-size:0.78rem;line-height:1.8;">
                 ⏰ Expires in <strong style="color:#fbbf24;">15 minutes</strong><br/>
-                🔒 Didn't request this? Ignore this email — nothing will change.<br/>
+                🔒 Didn't request this? Ignore this email.<br/>
                 🚫 Never share this link with anyone.
               </p>
             </div>
-
             <p style="margin-top:20px;color:rgba(255,255,255,0.22);font-size:0.72rem;word-break:break-all;">
-              Button not working? Copy this into your browser:<br/>
+              Button not working? Copy into browser:<br/>
               <span style="color:#00e5ff;">${resetUrl}</span>
             </p>
           </div>
-
           <div style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
-            <p style="margin:0;color:rgba(255,255,255,0.20);font-size:0.72rem;">
-              © 2025 Protonix.AI · Made by Subhanshu Pal
-            </p>
+            <p style="margin:0;color:rgba(255,255,255,0.20);font-size:0.72rem;">© 2025 Protonix.AI · Made by Subhanshu Pal</p>
           </div>
-
         </div>
       `,
     });
@@ -317,10 +321,7 @@ app.post('/api/auth/reset-password/:token', async (req, res) => {
       passwordResetToken:   hashedToken,
       passwordResetExpires: { $gt: Date.now() },
     });
-
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Token is invalid or has expired.' });
-    }
+    if (!user) return res.status(400).json({ success: false, message: 'Token is invalid or has expired.' });
 
     user.password             = req.body.password;
     user.passwordResetToken   = undefined;
@@ -335,8 +336,8 @@ app.post('/api/auth/reset-password/:token', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// TEST EMAIL ROUTE
-// Visit: https://protonix-ai.onrender.com/api/test-email?to=anyemail@gmail.com
+// TEST EMAIL
+// https://protonix-ai.onrender.com/api/test-email?to=anyone@gmail.com
 // ═══════════════════════════════════════════════════════════
 app.get('/api/test-email', async (req, res) => {
   const to = req.query.to || process.env.BREVO_USER;
@@ -344,13 +345,7 @@ app.get('/api/test-email', async (req, res) => {
     await sendEmail({
       to,
       subject: 'Protonix.AI — Email Test ✅',
-      html: `
-        <div style="font-family:Arial;padding:24px;background:#0f0f1a;color:#fff;border-radius:10px;">
-          <h2 style="color:#00e5ff;">Email is working! ✅</h2>
-          <p>Brevo SMTP is configured correctly on Render.</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:0.8rem;">Sent to: ${to}</p>
-        </div>
-      `,
+      html: `<div style="font-family:Arial;padding:24px;background:#0f0f1a;color:#fff;border-radius:10px;"><h2 style="color:#00e5ff;">Email working! ✅</h2><p>Brevo HTTP API working. Sent to: ${to}</p></div>`,
     });
     res.json({ success: true, message: `Test email sent to ${to}` });
   } catch (err) {
@@ -363,5 +358,4 @@ app.get('/api/test-email', async (req, res) => {
 // START
 // ═══════════════════════════════════════════════════════════
 app.get('/', (req, res) => res.json({ status: 'ok', message: 'Protonix AI Backend Running' }));
-
 app.listen(port, () => console.log(`Protonix live on port ${port}`));
