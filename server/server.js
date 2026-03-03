@@ -161,7 +161,7 @@ app.post('/api/chat', async (req, res) => {
     // "Grok" on frontend — powered by groq/llama via OpenRouter (fast + free)
     else if (botId === 'grok') {
       apiKey       = process.env.GROQ_API_KEY;
-      modelPath    = 'meta-llama/llama-4-maverick';
+      modelPath    = 'meta-llama/llama-4-maverick:free';
       temperature  = 0.8;
       systemPrompt = 'You are a highly capable AI assistant. Be concise, smart and helpful.';
     }
