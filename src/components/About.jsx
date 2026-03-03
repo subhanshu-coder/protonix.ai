@@ -1,252 +1,196 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-
+import React, { useEffect, useRef, useState } from "react";
+import { motion, useInView } from "framer-motion";
 import myLogo from "../assets/LogoImage.svg";
 import "./About.css";
 
-const styles = {
-  wrapper: {
-    display: "inline-block",
-    whiteSpace: "pre-wrap",
-    minWidth: "100%", // Reserve minimum width to prevent layout shift
-  },
-  srOnly: {
-    position: "absolute",
-    width: "1px",
-    height: "1px",
-    padding: 0,
-    margin: "-1px",
-    overflow: "hidden",
-    clip: "rect(0,0,0,0)",
-    border: 0,
-  },
-};
-
-function DecryptedText({
-  text,
-  speed = 50,
-  maxIterations = 8,
-  sequential = true,
-  revealDirection = "start",
-  useOriginalCharsOnly = false,
-  characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+",
-  className = "",
-  parentClassName = "",
-  encryptedClassName = "",
-  animateOn = "view",
-  ...props
-}) {
-  const [displayText, setDisplayText] = useState(text);
-  const [isHovering, setIsHovering] = useState(false);
-  const [isScrambling, setIsScrambling] = useState(false);
-  const [revealedIndices, setRevealedIndices] = useState(new Set());
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const containerRef = useRef(null);
-
+/* ── Animated counter ─────────────────────────────── */
+function Counter({ to, suffix = "" }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
   useEffect(() => {
-    let interval;
-    let currentIteration = 0;
+    if (!inView) return;
+    let start = 0;
+    const step = Math.ceil(to / 40);
+    const t = setInterval(() => {
+      start += step;
+      if (start >= to) { setVal(to); clearInterval(t); }
+      else setVal(start);
+    }, 35);
+    return () => clearInterval(t);
+  }, [inView, to]);
+  return <span ref={ref}>{val}{suffix}</span>;
+}
 
-    const getNextIndex = (revealedSet) => {
-      const len = text.length;
-      switch (revealDirection) {
-        case "start":
-          return revealedSet.size;
-        case "end":
-          return len - 1 - revealedSet.size;
-        case "center": {
-          const mid = Math.floor(len / 2);
-          const offset = Math.floor(revealedSet.size / 2);
-          const candidate =
-            revealedSet.size % 2 === 0 ? mid + offset : mid - offset - 1;
-          if (candidate >= 0 && candidate < len && !revealedSet.has(candidate))
-            return candidate;
-          for (let i = 0; i < len; i++) if (!revealedSet.has(i)) return i;
-          return 0;
-        }
-        default:
-          return revealedSet.size;
-      }
-    };
+const sections = [
+  {
+    icon: "🎯", title: "Mission", color: "#00c8ff",
+    solidBg: "linear-gradient(135deg, #003a4f 0%, #00536b 100%)",
+    border: "#00c8ff",
+    glow: "rgba(0,200,255,0.35)",
+    desc: "To democratize access to artificial intelligence by providing a unified platform that brings together the world's most advanced AI models.",
+    points: ["Make AI accessible to everyone","Eliminate platform fragmentation","Accelerate AI adoption globally","Foster innovation through AI"],
+  },
+  {
+    icon: "🔭", title: "Vision", color: "#a78bfa",
+    solidBg: "linear-gradient(135deg, #2e1a5e 0%, #3d2270 100%)",
+    border: "#a78bfa",
+    glow: "rgba(167,139,250,0.35)",
+    desc: "A world where every individual and organization can harness the full potential of AI without barriers or limitations.",
+    points: ["Universal AI access","Seamless AI integration","AI-powered productivity","Ethical AI development"],
+  },
+  {
+    icon: "💎", title: "Values", color: "#34d399",
+    solidBg: "linear-gradient(135deg, #063a27 0%, #0a4f35 100%)",
+    border: "#34d399",
+    glow: "rgba(52,211,153,0.35)",
+    desc: "We believe in transparency, privacy, innovation, and putting our users first in everything we do.",
+    points: ["User privacy is paramount","Transparent AI interactions","Continuous innovation","Ethical AI practice"],
+  },
+  {
+    icon: "⚡", title: "Technology Stack", color: "#fbbf24",
+    solidBg: "linear-gradient(135deg, #3d2a00 0%, #523900 100%)",
+    border: "#fbbf24",
+    glow: "rgba(251,191,36,0.35)",
+    desc: "Built with modern technologies for optimal performance and user experience.",
+    points: ["React & JavaScript","Advanced CSS Animations","Canvas API Graphics","Responsive Design"],
+  },
+  {
+    icon: "🚀", title: "Key Features", color: "#f472b6",
+    solidBg: "linear-gradient(135deg, #4a0a2a 0%, #610d38 100%)",
+    border: "#f472b6",
+    glow: "rgba(244,114,182,0.35)",
+    desc: "Experience the future of AI interaction with cutting-edge features.",
+    points: ["Multi-AI platform integration","Interactive animated interface","Real-time AI switching","Seamless user experience"],
+  },
+  {
+    icon: "👨‍💻", title: "Developer Journey", color: "#38bdf8",
+    solidBg: "linear-gradient(135deg, #012e4a 0%, #01405f 100%)",
+    border: "#38bdf8",
+    glow: "rgba(56,189,248,0.35)",
+    desc: "A passion project born from the vision to simplify AI accessibility for everyone.",
+    points: ["Solo developer project","Built with dedication","Continuous learning","User-focused development"],
+  },
+];
 
-    const availableChars = useOriginalCharsOnly
-      ? Array.from(new Set(text.split(""))).filter((c) => c !== " ")
-      : characters.split("");
+const stats = [
+  { value: 6,   suffix: "+",   label: "AI Models"    },
+  { value: 100, suffix: "%",   label: "Free to Use"  },
+  { value: 24,  suffix: "/7",  label: "Available"    },
+  { value: 1,   suffix: " Tab",label: "All AIs"      },
+];
 
-    const shuffle = (origin, revealed) => {
-      if (useOriginalCharsOnly) {
-        const positions = origin.split("").map((ch, i) => ({
-          ch,
-          isSpace: ch === " ",
-          idx: i,
-          revealed: revealed.has(i),
-        }));
-        const scrambleChars = positions
-          .filter((p) => !p.isSpace && !p.revealed)
-          .map((p) => p.ch);
-        for (let i = scrambleChars.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [scrambleChars[i], scrambleChars[j]] = [scrambleChars[j], scrambleChars[i]];
-        }
-        let idx = 0;
-        return positions
-          .map((p) => (p.isSpace ? " " : p.revealed ? origin[p.idx] : scrambleChars[idx++]))
-          .join("");
-      }
-      return origin
-        .split("")
-        .map((ch, i) =>
-          ch === " "
-            ? " "
-            : revealed.has(i)
-            ? origin[i]
-            : availableChars[Math.floor(Math.random() * availableChars.length)]
-        )
-        .join("");
-    };
-
-    if (isHovering) {
-      setIsScrambling(true);
-      interval = setInterval(() => {
-        setRevealedIndices((prev) => {
-          if (sequential) {
-            if (prev.size < text.length) {
-              const nextIdx = getNextIndex(prev);
-              const newSet = new Set(prev);
-              newSet.add(nextIdx);
-              setDisplayText(shuffle(text, newSet));
-              return newSet;
-            }
-            clearInterval(interval);
-            setIsScrambling(false);
-            return prev;
-          } else {
-            setDisplayText(shuffle(text, prev));
-            currentIteration++;
-            if (currentIteration >= maxIterations) {
-              clearInterval(interval);
-              setIsScrambling(false);
-              setDisplayText(text);
-            }
-            return prev;
-          }
-        });
-      }, speed);
-    } else {
-      setDisplayText(text);
-      setRevealedIndices(new Set());
-      setIsScrambling(false);
-    }
-
-    return () => interval && clearInterval(interval);
-  }, [isHovering, sequential, speed, text, maxIterations, revealDirection, characters, useOriginalCharsOnly]);
-
-  useEffect(() => {
-    if (animateOn !== "view") return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !hasAnimated) {
-            setIsHovering(true);
-            setHasAnimated(true);
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: "0px",
-        threshold: 0.1,
-      }
-    );
-
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => {
-      if (containerRef.current) observer.unobserve(containerRef.current);
-    };
-  }, [animateOn, hasAnimated]);
-
-  const hoverProps =
-    animateOn === "hover"
-      ? {
-          onMouseEnter: () => setIsHovering(true),
-          onMouseLeave: () => setIsHovering(false),
-        }
-      : {};
-
-  const visibleClass =
-    isScrambling && isHovering
-      ? "txt-scramble"
-      : !isScrambling && hasAnimated
-      ? "txt-reveal"
-      : "txt-visible";
-
+function SectionCard({ data, index }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
   return (
-    <motion.span
-      ref={containerRef}
-      className={`${parentClassName} ${className} ${visibleClass}`}
-      style={styles.wrapper}
-      {...hoverProps}
-      {...props}
+    <motion.div
+      ref={ref}
+      className="ab-card"
+      initial={{ opacity: 0, y: 44 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.55, delay: index * 0.09, ease: [0.22,1,0.36,1] }}
+      style={{
+        "--card-color":  data.color,
+        "--card-glow":   data.glow,
+        "--card-border": data.border,
+        "--card-bg":     data.solidBg,
+      }}
     >
-      <span style={styles.srOnly}>{text}</span>
-      <span aria-hidden="true">
-        {displayText.split("").map((ch, i) => (
-          <span
-            key={i}
-            className={revealedIndices.has(i) || !isScrambling || !isHovering ? "" : encryptedClassName}
-          >
-            {ch}
-          </span>
+      <div className="ab-card-header">
+        <span className="ab-card-icon">{data.icon}</span>
+        <h3 className="ab-card-title" style={{ color: data.color }}>{data.title}</h3>
+      </div>
+      <p className="ab-card-desc">{data.desc}</p>
+      <ul className="ab-card-points">
+        {data.points.map((pt, i) => (
+          <li key={i} className="ab-card-point">
+            <span className="ab-point-dot" style={{ background: data.color }} />
+            {pt}
+          </li>
         ))}
-      </span>
-    </motion.span>
+      </ul>
+      <div className="ab-card-line" style={{ background: `linear-gradient(90deg, transparent, ${data.color}, transparent)` }} />
+    </motion.div>
   );
 }
 
 export default function About() {
-  const lines = [
-    "AI Hub is a revolutionary platform unifying AI models under one interface.",
-    "We support ChatGPT, Claude, Gemini, and many more exciting tools.",
-    "Our mission is to democratize AI for everyone, everywhere.",
-    "Enjoy switching between models, seamless comparisons, and chat history.",
-    "Experience enterprise-grade security and unparalleled workflow.",
-    "Ideal for developers, researchers, and business professionals.",
-    "Join thousands transforming AI interactions today.",
-    "Unlock potential and innovation with AI Hub.",
-    "Step into the future with decrypted AI at your fingertips."
-  ];
+  const heroRef = useRef(null);
+  const heroInView = useInView(heroRef, { once: true });
 
   return (
-    <section className="about-section">
-      <h1 className="about-title">About PROTONIX.AI</h1>
-      <h2 className="about-heading">Decrypting the Future of AI</h2>
+    <section className="ab-section" id="about">
 
-      <div className="unified-container">
-        <div className="logo-section">
-          <div className="logo-background">
-            <img src={myLogo} alt="AI Hub Logo" className="logo-image" />
+      {/* ── Hero ── */}
+      <div className="ab-hero" ref={heroRef}>
+
+        <motion.div className="ab-hero-badge"
+          initial={{ opacity:0, scale:0.8 }}
+          animate={heroInView ? { opacity:1, scale:1 } : {}}
+          transition={{ duration:0.5 }}
+        >
+          <span className="ab-badge-dot" />
+          
+        </motion.div>
+
+        <motion.h1 className="ab-hero-title"
+          initial={{ opacity:0, y:24 }}
+          animate={heroInView ? { opacity:1, y:0 } : {}}
+          transition={{ duration:0.6, delay:0.1 }}
+        >
+          About <span className="ab-gradient-text">PROTONIX.AI</span>
+        </motion.h1>
+
+        <motion.p className="ab-hero-sub"
+          initial={{ opacity:0, y:16 }}
+          animate={heroInView ? { opacity:1, y:0 } : {}}
+          transition={{ duration:0.6, delay:0.2 }}
+        >
+          Discover the vision, technology, and passion driving this project
+        </motion.p>
+
+        {/* Logo orbital */}
+        <motion.div className="ab-logo-wrap"
+          initial={{ opacity:0, scale:0.7 }}
+          animate={heroInView ? { opacity:1, scale:1 } : {}}
+          transition={{ duration:0.7, delay:0.3, ease:[0.34,1.56,0.64,1] }}
+        >
+          <div className="ab-logo-ring ab-ring-1" />
+          <div className="ab-logo-ring ab-ring-2" />
+          <div className="ab-logo-core">
+            <img src={myLogo} alt="Protonix.AI" className="ab-logo-img" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="text-section">
-          {lines.map((line, idx) => (
-            <div key={idx} className="line-wrapper" tabIndex={0}>
-              <DecryptedText
-                text={line}
-                speed={30}
-                maxIterations={8}
-                sequential={true}
-                revealDirection="start"
-                className="decrypted-text"
-                encryptedClassName="encrypted-char"
-                animateOn="view"
-                parentClassName="line-container"
-              />
+        {/* Stats */}
+        <motion.div className="ab-stats"
+          initial={{ opacity:0, y:20 }}
+          animate={heroInView ? { opacity:1, y:0 } : {}}
+          transition={{ duration:0.6, delay:0.5 }}
+        >
+          {stats.map((s, i) => (
+            <div key={i} className="ab-stat">
+              <div className="ab-stat-value">
+                <Counter to={s.value} suffix={s.suffix} />
+              </div>
+              <div className="ab-stat-label">{s.label}</div>
             </div>
           ))}
-        </div>
+        </motion.div>
       </div>
+
+      {/* ── Heading ── */}
+      <div className="ab-cards-heading">
+        <span className="ab-section-tag">Core Pillars</span>
+        <h2 className="ab-cards-title">What Drives Us</h2>
+      </div>
+
+      {/* ── Cards grid ── */}
+      <div className="ab-cards-grid">
+        {sections.map((s, i) => <SectionCard key={i} data={s} index={i} />)}
+      </div>
+
     </section>
   );
 }
