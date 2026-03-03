@@ -108,20 +108,21 @@ const sendTokenResponse = (user, statusCode, res) => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// EMAIL TRANSPORTER  ← FIXED
+// EMAIL TRANSPORTER — uses Resend SMTP (works on Render free tier)
+// Render blocks Gmail port 587/465. Resend works on port 587 fine.
+// Setup: resend.com → free account → API Keys → create key
 // ═══════════════════════════════════════════════════════════
 const transporter = nodemailer.createTransport({
-  host:   'smtp.gmail.com',
+  host:   'smtp.resend.com',
   port:   587,
-  secure: false,               // STARTTLS on 587
+  secure: false,
   auth: {
-    user: process.env.EMAIL_FROM,
-    pass: process.env.EMAIL_PASSWORD,   // 16-char Gmail App Password
+    user: 'resend',                      // always literally 'resend'
+    pass: process.env.RESEND_API_KEY,    // your Resend API key
   },
-  tls: { rejectUnauthorized: false },
 });
 
-// Log email status on startup — visible in Render logs
+// Log email status on startup
 transporter.verify((err) => {
   if (err) console.error('❌ Email transporter error:', err.message);
   else     console.log('✅ Email transporter ready');
@@ -247,7 +248,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     // Send email
     await transporter.sendMail({
-      from:    `"Protonix.AI" <${process.env.EMAIL_FROM}>`,
+      from:    `"Protonix.AI" <onboarding@resend.dev>`,   // use this until you add custom domain in Resend
       to:      user.email,
       subject: 'Reset Your Password — PROTONIX.AI',
       html: `
