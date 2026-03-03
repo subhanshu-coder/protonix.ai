@@ -74,7 +74,7 @@ const sections = [
 ];
 
 const stats = [
-  { value: 6,   suffix: "+",   label: "AI Models"    },
+  { value: 4,   suffix: "+",   label: "AI Models"    },
   { value: 100, suffix: "%",   label: "Free to Use"  },
   { value: 24,  suffix: "/7",  label: "Available"    },
   { value: 1,   suffix: " Tab",label: "All AIs"      },
