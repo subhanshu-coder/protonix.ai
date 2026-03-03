@@ -1,17 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- <link rel="icon" type="image/svg+xml" href="/favicon.ico" /> -->
-    <title>AI ChatBot Hub</title>
-    <link rel="icon" href="data:,">
-</head>
+    <title>Protonix.AI — All AIs, One Tab</title>
 
-<body>
+    <!--
+      CRITICAL: This style block runs before ANY JavaScript.
+      It ensures the page is NEVER white or blue — even for the
+      50ms before React mounts and the preloader appears.
+    -->
+    <style>
+      html, body, #root {
+        background: #08080f !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 100vh;
+      }
+      /* Kill any canvas default background before React paints */
+      canvas {
+        background: #08080f !important;
+      }
+    </style>
+  </head>
+  <body style="background:#08080f;margin:0;padding:0;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-</body>
-
+  </body>
 </html>

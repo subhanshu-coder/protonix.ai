@@ -130,7 +130,7 @@ const SilkBackground = () => {
         width:      '100%',
         height:     '100%',
         display:    'block',
-        background: '#08080f',   // solid before first frame
+        background: 'black',   // solid before first frame
         zIndex:     0,
         pointerEvents: 'none',
       }}
