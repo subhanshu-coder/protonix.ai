@@ -9,37 +9,25 @@ html {
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* FIXED: Solid blue background, no transparency issues */
-  background-color: #0b55f7;
+  /* Transparent — Silk WebGL canvas in App.jsx provides the background */
+  background-color: transparent;
   color: white;
-  /* FIXED: Ensure full coverage and prevent horizontal scroll */
   min-height: 100vh;
   width: 100%;
   overflow-x: hidden;
-  /* FIXED: Prevent black background flashing */
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
 }
 
 .app-container {
   position: relative;
-  /* FIXED: Ensure consistent background */
   min-height: 100vh;
   width: 100%;
-  background: inherit;
+  /* Transparent — let the fixed Silk canvas show through */
+  background: transparent;
 }
 
 .background-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  /* FIXED: Solid blue fallback */
-  background-color: #0b55f7;
-  pointer-events: none;
+  /* No longer used — Silk is rendered in App.jsx as a fixed layer */
+  display: none;
 }
 
 .navbar-wrapper {
@@ -111,12 +99,7 @@ main {
   100% { left: 100%; }
 }
 
-/* FIXED: Better mobile handling */
 @media (max-width: 768px) {
-  body {
-    background-attachment: scroll; /* Better for mobile */
-  }
-  
   .navbar-wrapper {
     padding-top: clamp(0rem, 2vh, 1rem);
   }

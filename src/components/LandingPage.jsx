@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 
 // Component imports
 import ModernNav from './ModernNav';
-import Silk from './Silk';
 import Home from './Home';
 import Features from './Features';
 import About from './About';
@@ -166,17 +165,6 @@ const LandingPage = () => {
 
   return (
     <div className="app-container">
-      {/* Background Canvas */}
-      <div className="background-canvas">
-        <Silk
-          speed={5}
-          scale={1}
-          color="3494d8ff"
-          noiseIntensity={1.5}
-          rotation={0}
-        />
-      </div>
-
       {/* Navigation */}
       <div className="navbar-wrapper">
         <ModernNav
