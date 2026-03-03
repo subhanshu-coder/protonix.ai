@@ -10,7 +10,6 @@ import path from 'path';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -108,25 +107,44 @@ const sendTokenResponse = (user, statusCode, res) => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// EMAIL TRANSPORTER — uses Resend SMTP (works on Render free tier)
-// Render blocks Gmail port 587/465. Resend works on port 587 fine.
-// Setup: resend.com → free account → API Keys → create key
+// EMAIL — Resend HTTP API (no SMTP, no ports, works on Render)
+// Render blocks ALL outbound SMTP ports. Use HTTP API instead.
 // ═══════════════════════════════════════════════════════════
-const transporter = nodemailer.createTransport({
-  host:   'smtp.resend.com',
-  port:   587,
-  secure: false,
-  auth: {
-    user: 'resend',                      // always literally 'resend'
-    pass: process.env.RESEND_API_KEY,    // your Resend API key
-  },
-});
+const sendEmail = async ({ to, subject, html }) => {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY not set in environment variables');
+  
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from:    'Protonix.AI <onboarding@resend.dev>',
+      to:      [to],
+      subject,
+      html,
+    }),
+  });
 
-// Log email status on startup
-transporter.verify((err) => {
-  if (err) console.error('❌ Email transporter error:', err.message);
-  else     console.log('✅ Email transporter ready');
-});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.name || 'Resend API error');
+  return data;
+};
+
+// Test email on startup
+(async () => {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ Email error: RESEND_API_KEY not set in Render environment variables');
+      return;
+    }
+    // Just verify the key exists and is non-empty
+    console.log('✅ Email (Resend HTTP API) ready');
+  } catch (err) {
+    console.error('❌ Email error:', err.message);
+  }
+})();
 
 // ═══════════════════════════════════════════════════════════
 // CHAT ROUTE
@@ -246,9 +264,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
-    // Send email
-    await transporter.sendMail({
-      from:    `"Protonix.AI" <onboarding@resend.dev>`,   // use this until you add custom domain in Resend
+    // Send email via Resend HTTP API
+    await sendEmail({
       to:      user.email,
       subject: 'Reset Your Password — PROTONIX.AI',
       html: `
@@ -317,25 +334,22 @@ app.get('/', (req, res) => res.json({ status: 'ok', message: 'Protonix AI Backen
 // ── Email test route — open in browser to diagnose ──
 // https://protonix-ai.onrender.com/api/test-email
 app.get('/api/test-email', async (req, res) => {
-  const to = req.query.to || process.env.EMAIL_FROM;
+  const to = req.query.to || 'subhanshupal837@gmail.com';
   try {
-    await transporter.sendMail({
-      from:    '"Protonix.AI" <onboarding@resend.dev>',
+    await sendEmail({
       to,
-      subject: 'Protonix Email Test',
-      html:    '<p>Email is working!</p>',
+      subject: 'Protonix.AI — Email Test ✅',
+      html: '<div style="font-family:Arial;padding:20px;background:#0f0f1a;color:#fff;border-radius:8px;"><h2 style="color:#87CEEB;">Email is working! ✅</h2><p>Resend HTTP API is configured correctly on Render.</p></div>',
     });
     res.json({ success: true, message: `Test email sent to ${to}` });
   } catch (err) {
-    console.error('Test email error:', err.message, err.code);
+    console.error('Test email error:', err.message);
     res.status(500).json({
       success: false,
       error: err.message,
-      code:  err.code,
-      hint:
-        err.code === 'EAUTH'       ? 'Wrong App Password — go to myaccount.google.com/apppasswords' :
-        err.code === 'ECONNECTION' ? 'Cannot reach Gmail SMTP — Render network issue' :
-        'Check EMAIL_FROM and EMAIL_PASSWORD in Render env vars',
+      hint: !process.env.RESEND_API_KEY
+        ? 'Add RESEND_API_KEY to Render environment variables'
+        : 'Check your RESEND_API_KEY is valid at resend.com/api-keys',
     });
   }
 });
