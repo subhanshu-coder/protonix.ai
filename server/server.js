@@ -320,7 +320,7 @@ app.get('/api/test-email', async (req, res) => {
   const to = req.query.to || process.env.EMAIL_FROM;
   try {
     await transporter.sendMail({
-      from:    `"Protonix.AI" <${process.env.EMAIL_FROM}>`,
+      from:    '"Protonix.AI" <onboarding@resend.dev>',
       to,
       subject: 'Protonix Email Test',
       html:    '<p>Email is working!</p>',
