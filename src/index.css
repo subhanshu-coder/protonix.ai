@@ -51,3 +51,12 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #3b82f6; 
 }
+/* ✅ Fix: push content below fixed mobile navbar */
+@media (max-width: 768px) {
+  body {
+    padding-top: 70px !important;
+  }
+  html {
+    scroll-padding-top: 70px;
+  }
+}

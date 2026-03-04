@@ -23,6 +23,7 @@ import geminiLogo from '../assets/logos/gemini.png';
 const LandingPage = () => {
   const [activeSection, setActiveSection] = useState('home');
 
+
   const navItems = [
     { label: "Home", href: "#home", isGhost: true},
     { label: "Features", href: "#features", isGhost: true },
@@ -163,72 +164,70 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="app-container">
-      {/* Navigation */}
-      <div className="navbar-wrapper">
-        <ModernNav
-          items={navItems}
-          logoText="Protonix.AI"
-          activeSection={activeSection}
-        />
-      </div>
+    <>
+      {/* ✅ Navbar outside ALL scroll containers — truly fixed to viewport */}
+      <ModernNav
+        items={navItems}
+        logoText="Protonix.AI"
+        activeSection={activeSection}
+      />
 
-      {/* Main Content */}
-      <main>
-        <section id="home">
+      {/* Page content pushed down by navbar height */}
+      <div className="app-container" style={{ paddingTop: '54px' }}>
+        <main>
+          <section id="home">
             <Home />
-        </section>
+          </section>
 
-        <Features />
-        
-        <section id="about">
-          <About />
-        </section>
+          <Features />
 
-        {/* Marquee Section with Sky Blue Enhancement */}
-        <div className="marquee-special-container">
-          <h2 className="marquee-title" style={{
-            background: 'linear-gradient(135deg, #fff 0%, rgba(135, 206, 235, 1.0) 50%, #a5b4fc 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            textShadow: 'none'
-          }}>
-            Integration of Top AI's in Market
-          </h2>
-        </div>
+          <section id="about">
+            <About />
+          </section>
 
-        <SlidingLogoMarquee
-          items={logos}
-          speed={60}
-          backgroundColor={"rgba(135, 206, 235, 0.3)"}
-          pauseOnHover={true}
-          width="90%"
-          height="180px"
-          gap="0rem"
-          enableBlur={true}
-          blurIntensity={1}
-          showControls={true}
-          scale={1}
-          className="marquee-special-bg"
-        />
+          <div className="marquee-special-container">
+            <h2 className="marquee-title" style={{
+              background: 'linear-gradient(135deg, #fff 0%, rgba(135, 206, 235, 1.0) 50%, #a5b4fc 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textShadow: 'none'
+            }}>
+              Integration of Top AI's in Market
+            </h2>
+          </div>
 
-        
-        <HowItWorks />
-        
-        <section id="FAQs">
-          <FAQs />
-        </section> 
+          <SlidingLogoMarquee
+            items={logos}
+            speed={60}
+            backgroundColor={"rgba(135, 206, 235, 0.3)"}
+            pauseOnHover={true}
+            width="90%"
+            height="180px"
+            gap="0rem"
+            enableBlur={true}
+            blurIntensity={1}
+            showControls={true}
+            scale={1}
+            className="marquee-special-bg"
+          />
 
-        <section id="getintouch">
-          <GetInTouch />
-        </section>
+          <HowItWorks />
 
-        <section>
-          <Footer />
-        </section>
-      </main>
-    </div>
+          <section id="FAQs">
+            <FAQs />
+          </section>
+
+          <section id="getintouch">
+            <GetInTouch />
+          </section>
+
+          <section>
+            <Footer />
+          </section>
+        </main>
+      </div>
+    </>
   );
 };
 

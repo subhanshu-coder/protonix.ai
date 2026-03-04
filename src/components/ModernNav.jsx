@@ -86,7 +86,7 @@ const ModernNav = ({ items, logoText, activeSection }) => {
           <div className="overlay-logo-text">
             PROTONIX<span>.AI</span>
           </div>
-          <p className="overlay-tagline">All AIs, One Tab</p>
+          <p className="overlay-tagline">All AI's, IN One Tab</p>
         </div>
 
         {/* Nav items */}
@@ -112,7 +112,7 @@ const ModernNav = ({ items, logoText, activeSection }) => {
         </ul>
 
         {/* Bottom decoration */}
-        <p className="overlay-footer">© 2025 Protonix.AI</p>
+        <p className="overlay-footer">© 2026 Protonix.AI</p>
 
         {/* Decorative blobs */}
         <div className="blob blob-1" />

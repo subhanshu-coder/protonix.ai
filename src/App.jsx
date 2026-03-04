@@ -181,14 +181,13 @@ function App() {
         />
       </div>
 
-      {/* App — renders behind preloader, already painted when preloader exits */}
+      {/* App — no opacity wrapper (opacity breaks position:fixed on children) */}
       {authReady && (
         <div style={{
-          opacity:    preloaderDone ? 1 : 0,
+          position: 'relative',
+          zIndex:   1,
+          /* ✅ Use visibility only — doesn't break fixed positioning like opacity does */
           visibility: preloaderDone ? 'visible' : 'hidden',
-          transition: 'opacity 0.5s ease',
-          position:   'relative',
-          zIndex:     1,
         }}>
           <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
             <Router basename={basename}>
