@@ -12,7 +12,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import multer from 'multer';
-import FormData from 'form-data';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -401,25 +400,25 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     const apiKey = (process.env.GROQ_SPEECH_KEY || '').trim();
     if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not set in env.' });
 
-    // ✅ Detect correct file extension from original filename or mimetype
-    const originalName = req.file.originalname || 'audio.webm';
-    const ext = originalName.split('.').pop() || 'webm';
-    const contentType = req.file.mimetype || 'audio/webm';
+    const originalName = req.file.originalname || 'audio.mp4';
+    const ext          = originalName.split('.').pop() || 'mp4';
+    const contentType  = req.file.mimetype || 'audio/mp4';
 
     console.log(`Transcribe: file=${originalName} size=${req.file.size} mime=${contentType}`);
 
-    const form = new FormData();
-    form.append('file', req.file.buffer, {
-      filename:    `audio.${ext}`,   // ✅ correct extension tells Groq the format
-      contentType: contentType,
-    });
-    form.append('model', 'whisper-large-v3-turbo');
-    form.append('response_format', 'json');
+    // ✅ Use node-fetch compatible FormData (built-in global in Node 18+)
+    const { Blob: NodeBlob } = await import('buffer');
+    const audioBlob = new Blob([req.file.buffer], { type: contentType });
+
+    const nativeForm = new globalThis.FormData();
+    nativeForm.append('file', audioBlob, `audio.${ext}`);
+    nativeForm.append('model', 'whisper-large-v3-turbo');
+    nativeForm.append('response_format', 'json');
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method:  'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, ...form.getHeaders() },
-      body:    form,
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body:    nativeForm,
     });
 
     const data = await groqRes.json();
@@ -430,7 +429,6 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
     }
 
-    // ✅ Handle empty transcript gracefully
     const transcript = (data.text || '').trim();
     console.log('Transcript result:', JSON.stringify(transcript));
     if (!transcript) {
