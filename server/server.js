@@ -383,18 +383,39 @@ app.post('/api/tts', async (req, res) => {
   if (!text) return res.status(400).json({ error: 'No text provided' });
   try {
     const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
-    const voiceId = 'pNInz6obpgDQGcFmaJgB'; // Adam — natural male voice
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    console.log('TTS key present:', !!ELEVEN_KEY, 'text length:', text.length);
+
+    // First get available voices to find a valid male voice ID
+    const voicesRes = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: { 'xi-api-key': ELEVEN_KEY },
+    });
+    const voicesData = await voicesRes.json();
+    console.log('Available voices:', voicesData.voices?.map(v => `${v.name}:${v.voice_id}`));
+
+    // Pick a male voice — prefer Josh, Arnold, Adam, or first available
+    const voices = voicesData.voices || [];
+    const maleVoice =
+      voices.find(v => v.name === 'Josh') ||
+      voices.find(v => v.name === 'Arnold') ||
+      voices.find(v => v.name === 'Adam') ||
+      voices.find(v => v.name === 'Antoni') ||
+      voices[0];
+
+    if (!maleVoice) return res.status(500).json({ error: 'No voices found' });
+    console.log('Using voice:', maleVoice.name, maleVoice.voice_id);
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${maleVoice.voice_id}`, {
       method: 'POST',
       headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
       body: JSON.stringify({
         text,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
       }),
     });
     if (!response.ok) {
       const err = await response.text();
+      console.error('ElevenLabs error:', err);
       return res.status(500).json({ error: 'TTS failed', detail: err });
     }
     const audioBuffer = await response.arrayBuffer();

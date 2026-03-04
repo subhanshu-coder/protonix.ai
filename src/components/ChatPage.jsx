@@ -247,6 +247,14 @@ const ChatPage = ({ user, onLogout }) => {
   }, [inputMessage]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
+
+  // Safety: clear stuck respondingBots after 30s
+  useEffect(() => {
+    if (respondingBots.size > 0) {
+      const t = setTimeout(() => setRespondingBots(new Set()), 30000);
+      return () => clearTimeout(t);
+    }
+  }, [respondingBots]);
   useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
 
   const handleScroll = () => {
