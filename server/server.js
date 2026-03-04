@@ -138,61 +138,52 @@ console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide')
 
 // ═══════════════════════════════════════════════════════════
 // CHAT ROUTE
+// ✅ ALL bots now go through OpenRouter (one unified API)
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
   if (!message || !botId) return res.status(400).json({ reply: 'Missing message or botId.' });
 
   try {
-    // ── Grok: handled separately via Groq's own API ──
-    if (botId === 'grok') {
-      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY.trim()}`,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({
-          model:       'meta-llama/llama-4-maverick-17b-128e-instruct',
-          messages:    [
-            { role: 'system', content: 'You are a highly capable AI assistant. Be concise, smart and helpful.' },
-            { role: 'user',   content: message },
-          ],
-          max_tokens:  800,
-          temperature: 0.8,
-        }),
-      });
-
-      const groqData = await groqResponse.json();
-      console.log('grok status:', groqResponse.status, JSON.stringify(groqData).slice(0, 200));
-
-      if (!groqResponse.ok || groqData.error) {
-        return res.status(400).json({ reply: `Error: ${groqData.error?.message || 'Groq API error'}` });
-      }
-      return res.json({ reply: groqData.choices[0].message.content });
-    }
-
-    // ── All other bots: OpenRouter ──
+    const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
     let apiKey = '', modelPath = '', temperature = 0.4;
     let systemPrompt = 'You are a helpful assistant.';
-    const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-    if      (botId === 'perplexity') {
-      apiKey       = process.env.PERPLEXITY_OR_KEY;
+    if (botId === 'grok') {
+      // ✅ FIXED: your GROQ_API_KEY is an OpenRouter key (sk-or-v1-...), use it via OpenRouter
+      apiKey       = (process.env.GROQ_API_KEY || '').trim();
+      modelPath    = 'x-ai/grok-3-mini';
+      temperature  = 0.8;
+      systemPrompt = 'You are a highly capable AI assistant. Be concise, smart and helpful.';
+    }
+    else if (botId === 'perplexity') {
+      apiKey       = (process.env.PERPLEXITY_OR_KEY || '').trim();
       modelPath    = 'perplexity/sonar';
       systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.';
     }
-    else if (botId === 'gemini')   { apiKey = process.env.GEMINI_OR_KEY;   modelPath = 'google/gemini-2.0-flash-001'; }
-    else if (botId === 'claude')   { apiKey = process.env.CLAUDE_OR_KEY;   modelPath = 'anthropic/claude-3.5-sonnet'; }
-    else if (botId === 'gpt')      { apiKey = process.env.GPT_OR_KEY;      modelPath = 'openai/gpt-4o-mini'; }
-    else if (botId === 'deepseek') { apiKey = process.env.DEEPSEEK_OR_KEY; modelPath = 'deepseek/deepseek-chat'; }
+    else if (botId === 'gemini') {
+      apiKey    = (process.env.GEMINI_OR_KEY || '').trim();
+      modelPath = 'google/gemini-2.0-flash-001';
+    }
+    else if (botId === 'claude') {
+      apiKey    = (process.env.CLAUDE_OR_KEY || '').trim();
+      modelPath = 'anthropic/claude-3.5-sonnet';
+    }
+    else if (botId === 'gpt') {
+      apiKey    = (process.env.GPT_OR_KEY || '').trim();
+      modelPath = 'openai/gpt-4o-mini';
+    }
+    else if (botId === 'deepseek') {
+      apiKey    = (process.env.DEEPSEEK_OR_KEY || '').trim();
+      modelPath = 'deepseek/deepseek-chat';
+    }
 
-    if (!apiKey) return res.status(400).json({ reply: `❌ API key not found for: ${botId}` });
+    if (!apiKey) return res.status(400).json({ reply: `❌ API key not configured for: ${botId}` });
 
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey.trim()}`,
+        'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer':  process.env.CLIENT_URL || '',
         'X-Title':       'Protonix AI',
         'Content-Type':  'application/json',
