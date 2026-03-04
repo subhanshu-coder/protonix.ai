@@ -11,6 +11,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import multer from 'multer';
+import FormData from 'form-data';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -139,29 +141,24 @@ console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide')
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
-  if (!message || !botId) return res.status(400).json({ error: 'Missing message or botId.' });
+  if (!message || !botId) return res.status(400).json({ reply: 'Missing message or botId.' });
 
   try {
+    // ── All bots via OpenRouter ──
     let apiKey = '', modelPath = '', temperature = 0.7;
     let systemPrompt = 'You are a helpful assistant.';
     const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-    if      (botId === 'grok')       { apiKey = process.env.GROK_OR_KEY;       modelPath = 'x-ai/grok-3-mini-beta';       systemPrompt = 'You are Grok, a witty and highly capable AI. Be concise and helpful.'; }
-    else if (botId === 'perplexity') { apiKey = process.env.PERPLEXITY_OR_KEY;  modelPath = 'perplexity/sonar';            systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.'; }
-    else if (botId === 'gemini')     { apiKey = process.env.GEMINI_OR_KEY;      modelPath = 'google/gemini-2.0-flash-001'; }
-    else if (botId === 'claude')     { apiKey = process.env.CLAUDE_OR_KEY;      modelPath = 'anthropic/claude-3.5-sonnet'; }
-    else if (botId === 'gpt')        { apiKey = process.env.GPT_OR_KEY;         modelPath = 'openai/gpt-4o-mini'; }
-    else if (botId === 'deepseek')   { apiKey = process.env.DEEPSEEK_OR_KEY;    modelPath = 'deepseek/deepseek-chat'; }
+    if      (botId === 'grok')       { apiKey = process.env.GROK_OR_KEY;      modelPath = 'x-ai/grok-3-mini-beta';          systemPrompt = 'You are Grok, a witty and highly capable AI. Be concise and helpful.'; }
+    else if (botId === 'perplexity') { apiKey = process.env.PERPLEXITY_OR_KEY; modelPath = 'perplexity/sonar';               systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.'; }
+    else if (botId === 'gemini')     { apiKey = process.env.GEMINI_OR_KEY;     modelPath = 'google/gemini-2.0-flash-001'; }
+    else if (botId === 'claude')     { apiKey = process.env.CLAUDE_OR_KEY;     modelPath = 'anthropic/claude-3.5-sonnet'; }
+    else if (botId === 'gpt')        { apiKey = process.env.GPT_OR_KEY;        modelPath = 'openai/gpt-4o-mini'; }
+    else if (botId === 'deepseek')   { apiKey = process.env.DEEPSEEK_OR_KEY;   modelPath = 'deepseek/deepseek-chat'; }
 
-    if (!apiKey) return res.status(400).json({ error: `No API key for: ${botId}` });
+    if (!apiKey) return res.status(400).json({ reply: `❌ API key not found for: ${botId}` });
 
-    // ── SSE headers — stream tokens to client word by word ──
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    const upstream = await fetch(apiUrl, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey.trim()}`,
@@ -170,56 +167,25 @@ app.post('/api/chat', async (req, res) => {
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        model:    modelPath,
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
+        model:       modelPath,
+        messages:    [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
         max_tokens:  800,
         temperature,
-        stream:   true,   // ← enable streaming
       }),
     });
 
-    if (!upstream.ok) {
-      const err = await upstream.json();
-      console.error(`${botId} error:`, err);
-      res.write(`data: ${JSON.stringify({ error: err.error?.message || 'API error' })}\n\n`);
-      return res.end();
+    const data = await response.json();
+    console.log(`${botId} status:`, response.status, JSON.stringify(data).slice(0, 200));
+
+    if (!response.ok || data.error) {
+      return res.status(400).json({ reply: `Error: ${data.error?.message || 'API error — check OpenRouter credits'}` });
     }
 
-    // Pipe OpenRouter SSE → our SSE, extracting only the token text
-    const reader  = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    let   buffer  = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete line
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === '[DONE]') { res.write('data: [DONE]\n\n'); continue; }
-
-        try {
-          const parsed = JSON.parse(payload);
-          const token  = parsed.choices?.[0]?.delta?.content;
-          if (token) res.write(`data: ${JSON.stringify({ token })}\n\n`);
-        } catch { /* skip malformed */ }
-      }
-    }
-
-    console.log(`${botId} stream done`);
-    res.end();
+    res.json({ reply: data.choices[0].message.content });
 
   } catch (err) {
     console.error('Chat error:', err.message);
-    if (!res.headersSent) return res.status(500).json({ error: err.message });
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-    res.end();
+    res.status(500).json({ reply: `Server Error: ${err.message}` });
   }
 });
 
@@ -407,6 +373,70 @@ app.post('/api/tts', async (req, res) => {
     res.send(Buffer.from(audioBuffer));
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// SPEECH TO TEXT — Groq Whisper
+// ═══════════════════════════════════════════════════════════
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
+app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No audio file received.' });
+
+    const apiKey = (process.env.GROQ_SPEECH_KEY || process.env.GROQ_API_KEY || '').trim();
+    if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not set.' });
+
+    // Detect file extension from mimetype
+    const mime = req.file.mimetype || 'audio/webm';
+    const extMap = {
+      'audio/mp4': 'mp4', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a',
+      'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/wav': 'wav',
+      'audio/mpeg': 'mp3',
+    };
+    // Try filename extension first, then mime
+    const originalExt = req.file.originalname?.split('.').pop() || '';
+    const ext = ['mp4','m4a','webm','ogg','wav','mp3'].includes(originalExt)
+      ? originalExt
+      : (extMap[mime] || extMap[mime.split(';')[0]] || 'mp4');
+
+    const form = new FormData();
+    form.append('file', req.file.buffer, {
+      filename:    `audio.${ext}`,
+      contentType: mime.split(';')[0],
+    });
+    form.append('model', 'whisper-large-v3-turbo');
+    form.append('response_format', 'json');
+    form.append('language', 'en');
+
+    console.log(`Transcribe: ext=${ext}, mime=${mime}, size=${req.file.size}b`);
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, ...form.getHeaders() },
+      body:    form,
+    });
+
+    const data = await groqRes.json();
+
+    if (!groqRes.ok) {
+      console.error('Groq Whisper error:', data);
+      return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
+    }
+
+    if (!data.text?.trim()) {
+      return res.json({ success: false, message: 'empty', debug: { ext, size: req.file.size } });
+    }
+
+    res.json({ success: true, transcript: data.text.trim() });
+
+  } catch (err) {
+    console.error('Transcribe error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
