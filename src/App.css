@@ -100,10 +100,22 @@ main {
 }
 
 @media (max-width: 768px) {
+  /* ✅ Navbar is fixed on mobile — zero padding so it sits flush at top */
   .navbar-wrapper {
-    padding-top: clamp(0rem, 2vh, 1rem);
+    padding-top: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    width: 100%;
   }
-  
+
+  /* ✅ Push ALL page content below the 52px fixed navbar */
+  body {
+    padding-top: 52px;
+  }
+
   .logo-item img {
     height: 80px;
   }
