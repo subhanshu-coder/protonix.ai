@@ -271,23 +271,137 @@ const ChatPage = ({ user, onLogout }) => {
   };
 
   const handleVoiceToggle = async () => {
-    if (isListening) { silenceTimer.current && clearTimeout(silenceTimer.current); recognitionRef.current?.stop(); setIsListening(false); return; }
+    // ── STOP if already recording ──
+    if (isListening) {
+      silenceTimer.current && clearTimeout(silenceTimer.current);
+      if (recognitionRef.current) {
+        const r = recognitionRef.current;
+        if (typeof r.stop === 'function') r.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+    const isAndroid = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    // ── Desktop: use native SpeechRecognition (instant, no latency) ──
+    if (SR && !isAndroid) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        analyserRef.current = audioCtxRef.current.createAnalyser();
+        audioCtxRef.current.createMediaStreamSource(stream).connect(analyserRef.current);
+        const da = new Uint8Array(analyserRef.current.frequencyBinCount);
+        const tick = () => {
+          if (!analyserRef.current || !isListeningRef.current) return;
+          analyserRef.current.getByteFrequencyData(da);
+          setVolume(da.reduce((a, b) => a + b) / da.length);
+          requestAnimationFrame(tick);
+        };
+        const rec = new SR();
+        recognitionRef.current = rec;
+        rec.continuous = rec.interimResults = true;
+        rec.onstart  = () => { setIsListening(true); isListeningRef.current = true; textRef.current = inputMessage; tick(); };
+        rec.onresult = (e) => {
+          silenceTimer.current && clearTimeout(silenceTimer.current);
+          silenceTimer.current = setTimeout(() => rec.stop(), 2500);
+          setInputMessage(textRef.current + (textRef.current && !textRef.current.endsWith(' ') ? ' ' : '') + Array.from(e.results).map(r => r[0].transcript).join(''));
+        };
+        rec.onerror = (e) => {
+          setIsListening(false); isListeningRef.current = false; setVolume(0);
+          stream.getTracks().forEach(t => t.stop());
+          setImproveToast(`🎤 Mic error: ${e.error}`);
+          setTimeout(() => setImproveToast(''), 3000);
+        };
+        rec.onend = () => { setIsListening(false); isListeningRef.current = false; setVolume(0); stream.getTracks().forEach(t => t.stop()); };
+        rec.start();
+      } catch {
+        setImproveToast('🎤 Mic permission denied');
+        setTimeout(() => setImproveToast(''), 3000);
+      }
+      return;
+    }
+
+    // ── Mobile/Android: MediaRecorder → Whisper API (works on all mobile browsers) ──
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Audio visualiser
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioCtxRef.current.createAnalyser();
       audioCtxRef.current.createMediaStreamSource(stream).connect(analyserRef.current);
       const da = new Uint8Array(analyserRef.current.frequencyBinCount);
-      const tick = () => { if (!analyserRef.current || !isListeningRef.current) return; analyserRef.current.getByteFrequencyData(da); setVolume(da.reduce((a,b)=>a+b)/da.length); requestAnimationFrame(tick); };
-      recognitionRef.current = new SR();
-      recognitionRef.current.continuous = recognitionRef.current.interimResults = true;
-      recognitionRef.current.onstart  = () => { setIsListening(true); isListeningRef.current = true; textRef.current = inputMessage; tick(); };
-      recognitionRef.current.onresult = (e) => { silenceTimer.current && clearTimeout(silenceTimer.current); silenceTimer.current = setTimeout(() => recognitionRef.current.stop(), 2500); setInputMessage(textRef.current + (textRef.current && !textRef.current.endsWith(' ') ? ' ' : '') + Array.from(e.results).map(r=>r[0].transcript).join('')); };
-      recognitionRef.current.onend    = () => { setIsListening(false); isListeningRef.current = false; setVolume(0); stream.getTracks().forEach(t=>t.stop()); };
-      recognitionRef.current.start();
-    } catch { setIsListening(false); }
+      const tick = () => {
+        if (!analyserRef.current || !isListeningRef.current) return;
+        analyserRef.current.getByteFrequencyData(da);
+        setVolume(da.reduce((a, b) => a + b) / da.length);
+        requestAnimationFrame(tick);
+      };
+
+      // ✅ Pick best format — Groq Whisper supports: mp4, webm, ogg, wav, m4a
+      // Android Chrome often only supports audio/mp4 or audio/webm
+      const formatPriority = [
+        { mime: 'audio/mp4',            ext: 'mp4'  },  // Android Chrome primary
+        { mime: 'audio/webm;codecs=opus', ext: 'webm' },
+        { mime: 'audio/webm',           ext: 'webm' },
+        { mime: 'audio/ogg;codecs=opus',ext: 'ogg'  },
+        { mime: 'audio/ogg',            ext: 'ogg'  },
+      ];
+      const chosen  = formatPriority.find(f => MediaRecorder.isTypeSupported(f.mime)) || { mime: '', ext: 'webm' };
+      const mimeType = chosen.mime;
+      const fileExt  = chosen.ext;
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+      const chunks   = [];
+      recognitionRef.current = recorder;
+
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstart = () => {
+        setIsListening(true);
+        isListeningRef.current = true;
+        textRef.current = inputMessage;
+        tick();
+        // Auto-stop after 30s
+        silenceTimer.current = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 30000);
+      };
+
+      recorder.onstop = async () => {
+        setIsListening(false);
+        isListeningRef.current = false;
+        setVolume(0);
+        stream.getTracks().forEach(t => t.stop());
+        silenceTimer.current && clearTimeout(silenceTimer.current);
+        if (chunks.length === 0) return;
+
+        setImproveToast('🎤 Processing…');
+        try {
+          // ✅ Use correct extension so Groq knows the format
+          const blob     = new Blob(chunks, { type: mimeType || 'audio/mp4' });
+          const formData = new FormData();
+          formData.append('audio', blob, `audio.${fileExt}`);
+          const res  = await fetch(`${API}/api/transcribe`, { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data.success && data.transcript?.trim()) {
+            const prev = textRef.current;
+            setInputMessage(prev + (prev && !prev.endsWith(' ') ? ' ' : '') + data.transcript.trim());
+            setImproveToast('✅ Transcribed!');
+          } else {
+            setImproveToast('🎤 Could not understand audio');
+          }
+        } catch {
+          setImproveToast('🎤 Transcription failed');
+        }
+        setTimeout(() => setImproveToast(''), 2500);
+      };
+
+      recorder.start(250); // ✅ 250ms chunks — more reliable on Android than 100ms
+    } catch (err) {
+      setIsListening(false);
+      setImproveToast(err.name === 'NotAllowedError' ? '🎤 Allow mic permission in browser settings' : '🎤 Could not access microphone');
+      setTimeout(() => setImproveToast(''), 3500);
+    }
   };
 
   const handleImprove = async () => {
@@ -692,9 +806,9 @@ const ChatPage = ({ user, onLogout }) => {
             {/* Bottom icon row — all bottom-aligned, compact */}
             <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8 }}>
 
-              {/* Mic */}
-              <button onClick={handleVoiceToggle} title="Voice"
-                style={{ background:'none', border:'none', cursor:'pointer', color:isListening?'#ef4444':muted, display:'flex', padding:'3px', flexShrink:0 }}>
+              {/* Mic — works on all devices via Whisper on mobile */}
+              <button onClick={handleVoiceToggle} title={isListening ? "Tap to stop" : "Voice input"}
+                style={{ background: isListening ? 'rgba(239,68,68,0.12)' : 'none', border: 'none', cursor: 'pointer', color: isListening ? '#ef4444' : muted, display: 'flex', padding: '3px', flexShrink: 0, borderRadius: 6, transition: 'all .15s' }}>
                 {isListening ? <MicOff size={17}/> : <Mic size={17}/>}
               </button>
 

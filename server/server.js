@@ -401,14 +401,20 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     const apiKey = (process.env.GROQ_SPEECH_KEY || '').trim();
     if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not set in env.' });
 
+    // ✅ Detect correct file extension from original filename or mimetype
+    const originalName = req.file.originalname || 'audio.webm';
+    const ext = originalName.split('.').pop() || 'webm';
+    const contentType = req.file.mimetype || 'audio/webm';
+
+    console.log(`Transcribe: file=${originalName} size=${req.file.size} mime=${contentType}`);
+
     const form = new FormData();
     form.append('file', req.file.buffer, {
-      filename:    'audio.webm',
-      contentType: req.file.mimetype || 'audio/webm',
+      filename:    `audio.${ext}`,   // ✅ correct extension tells Groq the format
+      contentType: contentType,
     });
-    form.append('model', 'whisper-large-v3-turbo'); // ✅ Free on Groq, very fast
+    form.append('model', 'whisper-large-v3-turbo');
     form.append('response_format', 'json');
-    form.append('language', 'en');
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method:  'POST',
@@ -417,6 +423,8 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     });
 
     const data = await groqRes.json();
+    console.log('Groq Whisper response:', JSON.stringify(data).slice(0, 200));
+
     if (!groqRes.ok) {
       console.error('Groq Whisper error:', data);
       return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
