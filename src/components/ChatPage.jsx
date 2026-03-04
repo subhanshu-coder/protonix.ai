@@ -247,14 +247,6 @@ const ChatPage = ({ user, onLogout }) => {
   }, [inputMessage]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
-
-  // Safety: clear stuck respondingBots after 30s
-  useEffect(() => {
-    if (respondingBots.size > 0) {
-      const t = setTimeout(() => setRespondingBots(new Set()), 30000);
-      return () => clearTimeout(t);
-    }
-  }, [respondingBots]);
   useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
 
   const handleScroll = () => {
@@ -477,42 +469,54 @@ const ChatPage = ({ user, onLogout }) => {
       .trim();
   };
 
-  const handleSpeak = async (msgText, id) => {
-    if (speakingId === id) {
-      // Stop current audio
-      if (speechRef.current) { speechRef.current.pause(); speechRef.current = null; }
-      setSpeakingId(null);
-      return;
-    }
-    // Stop any playing audio
-    if (speechRef.current) { speechRef.current.pause(); speechRef.current = null; }
-    setSpeakingId(id);
-    try {
-      const res = await fetch(`${API}/api/tts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanForSpeech(msgText) }),
-      });
-      if (!res.ok) throw new Error('TTS failed');
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      speechRef.current = audio;
-      audio.onended = () => { setSpeakingId(null); URL.revokeObjectURL(url); };
-      audio.onerror = () => { setSpeakingId(null); URL.revokeObjectURL(url); };
-      audio.play();
-    } catch (err) {
-      console.error('TTS error:', err);
-      setSpeakingId(null);
-      // Fallback to browser TTS
-      const utt = new SpeechSynthesisUtterance(cleanForSpeech(msgText));
-      utt.rate = 1.35; utt.pitch = 0.7;
-      utt.onend = () => setSpeakingId(null);
+  const handleSpeak = (msgText, id) => {
+    if (speakingId === id) { window.speechSynthesis.cancel(); setSpeakingId(null); return; }
+    window.speechSynthesis.cancel();
+
+    const cleaned = cleanForSpeech(msgText);
+
+    const utt = new SpeechSynthesisUtterance(cleaned);
+
+    // Expressive, natural voice settings
+    utt.rate   = 1.2;   // slightly faster — natural pace
+    utt.pitch  = 1.1;   // light male tone, not deep
+    utt.volume = 1.0;
+
+    utt.onend   = () => setSpeakingId(null);
+    utt.onerror = () => setSpeakingId(null);
+
+    // Wait for voices to load, then pick light male voice
+    const pickAndSpeak = (voices) => {
+      // Female voice names to avoid
+      const isFemale = (v) => /female|samantha|karen|victoria|moira|fiona|tessa|zira|hazel|susan|kate|emma|lisa|amy|allison|ava|siri|kathy|vicki|junior|bells|cellos|pipe|bubbles/i.test(v.name);
+      const maleEn = voices.filter(v => v.lang.startsWith('en') && !isFemale(v));
+      const preferred =
+        maleEn.find(v => /Rishi/i.test(v.name)) ||           // Apple Indian male
+        maleEn.find(v => v.lang === 'en-IN') ||              // Indian English male
+        maleEn.find(v => /Google UK English Male/i.test(v.name)) ||
+        maleEn.find(v => /Daniel/i.test(v.name)) ||          // British male
+        maleEn.find(v => /Alex/i.test(v.name)) ||            // macOS male
+        maleEn.find(v => /David|Mark|Richard|James|Fred/i.test(v.name)) ||
+        maleEn[0] ||                                          // first non-female English
+        voices.find(v => v.lang.startsWith('en'));
+      if (preferred) utt.voice = preferred;
+      speechRef.current = utt;
+      setSpeakingId(id);
       window.speechSynthesis.speak(utt);
+    };
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      pickAndSpeak(voices);
+    } else {
+      // voices not loaded yet — wait for them
+      window.speechSynthesis.onvoiceschanged = () => {
+        pickAndSpeak(window.speechSynthesis.getVoices());
+      };
     }
   };
 
-    const handleSend = useCallback(() => {
+  const handleSend = useCallback(() => {
     if (!inputMessage.trim()) return;
     // Block if any bot is still streaming
     if (respondingBots.size > 0) return;
