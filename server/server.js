@@ -379,57 +379,50 @@ app.post('/api/tts', async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 // SPEECH TO TEXT — Groq Whisper
 // ═══════════════════════════════════════════════════════════
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No audio file received.' });
 
     const apiKey = (process.env.GROQ_SPEECH_KEY || process.env.GROQ_API_KEY || '').trim();
-    if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not set.' });
+    if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not configured.' });
 
-    // Detect file extension from mimetype
-    const mime = req.file.mimetype || 'audio/webm';
-    const extMap = {
-      'audio/mp4': 'mp4', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a',
-      'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/wav': 'wav',
-      'audio/mpeg': 'mp3',
-    };
-    // Try filename extension first, then mime
-    const originalExt = req.file.originalname?.split('.').pop() || '';
-    const ext = ['mp4','m4a','webm','ogg','wav','mp3'].includes(originalExt)
-      ? originalExt
-      : (extMap[mime] || extMap[mime.split(';')[0]] || 'mp4');
+    // Determine correct extension — critical for Groq to parse correctly
+    const originalName = req.file.originalname || 'audio.webm';
+    const ext = originalName.split('.').pop()?.toLowerCase() || 'webm';
+    const safeExt = ['webm','ogg','mp4','m4a','wav','mp3','flac'].includes(ext) ? ext : 'webm';
 
+    // Build multipart form for Groq
     const form = new FormData();
     form.append('file', req.file.buffer, {
-      filename:    `audio.${ext}`,
-      contentType: mime.split(';')[0],
+      filename:    `audio.${safeExt}`,
+      contentType: req.file.mimetype?.split(';')[0] || 'audio/webm',
+      knownLength: req.file.buffer.length,   // ← fixes EOF error
     });
     form.append('model', 'whisper-large-v3-turbo');
     form.append('response_format', 'json');
     form.append('language', 'en');
 
-    console.log(`Transcribe: ext=${ext}, mime=${mime}, size=${req.file.size}b`);
+    console.log(`Transcribe: ext=${safeExt}, size=${req.file.size}b, mime=${req.file.mimetype}`);
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method:  'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, ...form.getHeaders() },
-      body:    form,
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        ...form.getHeaders(),
+      },
+      body: form,
     });
 
     const data = await groqRes.json();
-
     if (!groqRes.ok) {
       console.error('Groq Whisper error:', data);
       return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
     }
 
     if (!data.text?.trim()) {
-      return res.json({ success: false, message: 'empty', debug: { ext, size: req.file.size } });
+      return res.json({ success: false, message: 'empty' });
     }
 
     res.json({ success: true, transcript: data.text.trim() });

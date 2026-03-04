@@ -326,7 +326,7 @@ const ChatPage = ({ user, onLogout }) => {
       return;
     }
 
-    // ── Mobile/Android: MediaRecorder → Whisper API (works on all mobile browsers) ──
+    // ── Mobile/Android: MediaRecorder → Whisper API ──
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -342,16 +342,16 @@ const ChatPage = ({ user, onLogout }) => {
         requestAnimationFrame(tick);
       };
 
-      // ✅ Pick best format — Groq Whisper supports: mp4, webm, ogg, wav, m4a
-      // Android Chrome often only supports audio/mp4 or audio/webm
+      // Groq Whisper works best with webm > ogg > mp4
+      // NEVER use audio/mp4 as first choice — causes multipart EOF on Groq
       const formatPriority = [
-        { mime: 'audio/mp4',            ext: 'mp4'  },  // Android Chrome primary
         { mime: 'audio/webm;codecs=opus', ext: 'webm' },
-        { mime: 'audio/webm',           ext: 'webm' },
-        { mime: 'audio/ogg;codecs=opus',ext: 'ogg'  },
-        { mime: 'audio/ogg',            ext: 'ogg'  },
+        { mime: 'audio/webm',             ext: 'webm' },
+        { mime: 'audio/ogg;codecs=opus',  ext: 'ogg'  },
+        { mime: 'audio/ogg',              ext: 'ogg'  },
+        { mime: 'audio/mp4',              ext: 'mp4'  },
       ];
-      const chosen  = formatPriority.find(f => MediaRecorder.isTypeSupported(f.mime)) || { mime: '', ext: 'webm' };
+      const chosen   = formatPriority.find(f => MediaRecorder.isTypeSupported(f.mime)) || { mime: '', ext: 'webm' };
       const mimeType = chosen.mime;
       const fileExt  = chosen.ext;
 
@@ -366,7 +366,6 @@ const ChatPage = ({ user, onLogout }) => {
         isListeningRef.current = true;
         textRef.current = inputMessage;
         tick();
-        // Auto-stop after 30s
         silenceTimer.current = setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 30000);
       };
 
@@ -376,8 +375,8 @@ const ChatPage = ({ user, onLogout }) => {
         setVolume(0);
         silenceTimer.current && clearTimeout(silenceTimer.current);
 
-        // ✅ Wait a tick for any final ondataavailable to fire on Android
-        await new Promise(r => setTimeout(r, 300));
+        // Wait longer for final chunks to fire on Android
+        await new Promise(r => setTimeout(r, 600));
         stream.getTracks().forEach(t => t.stop());
 
         if (chunks.length === 0) {
@@ -388,25 +387,32 @@ const ChatPage = ({ user, onLogout }) => {
 
         setImproveToast('🎤 Processing…');
         try {
-          // ✅ Use correct extension so Groq knows the format
-          const blob     = new Blob(chunks, { type: mimeType || 'audio/mp4' });
-          console.log('Sending audio:', { mimeType, fileExt, size: blob.size, chunks: chunks.length });
-          if (blob.size < 1000) {
-            setImproveToast('🎤 Recording too short — hold mic and speak longer');
+          const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+          console.log('Audio:', { mimeType, fileExt, size: blob.size, chunks: chunks.length });
+
+          if (blob.size < 500) {
+            setImproveToast('🎤 Too short — hold mic button and speak');
             setTimeout(() => setImproveToast(''), 3000);
             return;
           }
+
           const formData = new FormData();
           formData.append('audio', blob, `audio.${fileExt}`);
+
           const res  = await fetch(`${API}/api/transcribe`, { method: 'POST', body: formData });
+
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`Server ${res.status}: ${txt.slice(0, 100)}`);
+          }
+
           const data = await res.json();
           if (data.success && data.transcript?.trim()) {
             const prev = textRef.current;
             setInputMessage(prev + (prev && !prev.endsWith(' ') ? ' ' : '') + data.transcript.trim());
             setImproveToast('✅ Transcribed!');
           } else if (data.message === 'empty') {
-            // ✅ Audio reached server but Groq returned empty — likely silent or too short
-            setImproveToast(`🎤 No speech detected (${data.debug?.ext}, ${data.debug?.size}b)`);
+            setImproveToast('🎤 No speech detected — speak louder');
           } else {
             setImproveToast(`🎤 ${data.message || 'Could not understand audio'}`);
           }
@@ -416,7 +422,7 @@ const ChatPage = ({ user, onLogout }) => {
         setTimeout(() => setImproveToast(''), 2500);
       };
 
-      recorder.start(250); // ✅ 250ms chunks — more reliable on Android than 100ms
+      recorder.start(500); // 500ms chunks — more complete data per chunk on Android
     } catch (err) {
       setIsListening(false);
       setImproveToast(err.name === 'NotAllowedError' ? '🎤 Allow mic permission in browser settings' : '🎤 Could not access microphone');
@@ -478,9 +484,8 @@ const ChatPage = ({ user, onLogout }) => {
     const utt = new SpeechSynthesisUtterance(cleaned);
 
     // Expressive, natural voice settings
-    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    utt.rate   = isMobileDevice ? 0.85 : 1.0;  // slower on mobile — voices are naturally faster
-    utt.pitch  = isMobileDevice ? 1.0  : 1.1;
+    utt.rate   = 1.2;   // slightly faster — natural pace
+    utt.pitch  = 1.1;   // light male tone, not deep
     utt.volume = 1.0;
 
     utt.onend   = () => setSpeakingId(null);
