@@ -49,6 +49,7 @@ const improveQuestion = async (text) => {
     });
     if (!res.ok) return text;
 
+    // Read SSE stream and collect all tokens
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
     let   buffer  = '';
@@ -477,8 +478,9 @@ const ChatPage = ({ user, onLogout }) => {
     const utt = new SpeechSynthesisUtterance(cleaned);
 
     // Expressive, natural voice settings
-    utt.rate   = 1.2;   // slightly faster — natural pace
-    utt.pitch  = 1.1;   // light male tone, not deep
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    utt.rate   = isMobileDevice ? 0.85 : 1.0;  // slower on mobile — voices are naturally faster
+    utt.pitch  = isMobileDevice ? 1.0  : 1.1;
     utt.volume = 1.0;
 
     utt.onend   = () => setSpeakingId(null);
@@ -842,20 +844,8 @@ const ChatPage = ({ user, onLogout }) => {
                     <div className="comp-msgs">
                       {messages.filter(m => m.sender==='user' || m.botId===bot.id).map((m,i) => (
                         <div key={i} className="msg-in" style={{ display:'flex', justifyContent: m.sender==='user'?'flex-end':'flex-start' }}>
-                          <div style={{ maxWidth:'88%' }}>
-                            <div style={{ padding:'11px 15px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.86rem', lineHeight:1.68, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                              {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
-                            </div>
-                            {m.sender==='bot' && !m.isLoading && m.text && (
-                              <div className="msg-actions">
-                                <button className={`msg-action-btn ${copiedId===`${bot.id}-${i}`?'active':''}`} onClick={() => handleCopy(m.text, `${bot.id}-${i}`)}>
-                                  <Copy size={11}/>{copiedId===`${bot.id}-${i}` ? 'Copied!' : 'Copy'}
-                                </button>
-                                <button className={`msg-action-btn ${speakingId===`${bot.id}-${i}`?'active':''}`} onClick={() => handleSpeak(m.text, `${bot.id}-${i}`)}>
-                                  {speakingId===`${bot.id}-${i}` ? <><VolumeX size={11}/>Stop</> : <><Volume2 size={11}/>Speak</>}
-                                </button>
-                              </div>
-                            )}
+                          <div style={{ maxWidth:'88%', padding:'11px 15px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.86rem', lineHeight:1.68, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                            {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
                           </div>
                         </div>
                       ))}
