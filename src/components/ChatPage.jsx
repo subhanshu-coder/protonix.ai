@@ -356,7 +356,7 @@ const ChatPage = ({ user, onLogout }) => {
       const chunks   = [];
       recognitionRef.current = recorder;
 
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
 
       recorder.onstart = () => {
         setIsListening(true);
@@ -371,14 +371,28 @@ const ChatPage = ({ user, onLogout }) => {
         setIsListening(false);
         isListeningRef.current = false;
         setVolume(0);
-        stream.getTracks().forEach(t => t.stop());
         silenceTimer.current && clearTimeout(silenceTimer.current);
-        if (chunks.length === 0) return;
+
+        // ✅ Wait a tick for any final ondataavailable to fire on Android
+        await new Promise(r => setTimeout(r, 300));
+        stream.getTracks().forEach(t => t.stop());
+
+        if (chunks.length === 0) {
+          setImproveToast('🎤 No audio recorded — try again');
+          setTimeout(() => setImproveToast(''), 3000);
+          return;
+        }
 
         setImproveToast('🎤 Processing…');
         try {
           // ✅ Use correct extension so Groq knows the format
           const blob     = new Blob(chunks, { type: mimeType || 'audio/mp4' });
+          console.log('Sending audio:', { mimeType, fileExt, size: blob.size, chunks: chunks.length });
+          if (blob.size < 1000) {
+            setImproveToast('🎤 Recording too short — hold mic and speak longer');
+            setTimeout(() => setImproveToast(''), 3000);
+            return;
+          }
           const formData = new FormData();
           formData.append('audio', blob, `audio.${fileExt}`);
           const res  = await fetch(`${API}/api/transcribe`, { method: 'POST', body: formData });
@@ -387,11 +401,14 @@ const ChatPage = ({ user, onLogout }) => {
             const prev = textRef.current;
             setInputMessage(prev + (prev && !prev.endsWith(' ') ? ' ' : '') + data.transcript.trim());
             setImproveToast('✅ Transcribed!');
+          } else if (data.message === 'empty') {
+            // ✅ Audio reached server but Groq returned empty — likely silent or too short
+            setImproveToast(`🎤 No speech detected (${data.debug?.ext}, ${data.debug?.size}b)`);
           } else {
-            setImproveToast('🎤 Could not understand audio');
+            setImproveToast(`🎤 ${data.message || 'Could not understand audio'}`);
           }
-        } catch {
-          setImproveToast('🎤 Transcription failed');
+        } catch (err) {
+          setImproveToast(`🎤 Error: ${err.message}`);
         }
         setTimeout(() => setImproveToast(''), 2500);
       };

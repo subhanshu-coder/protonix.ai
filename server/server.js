@@ -430,7 +430,13 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
       return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
     }
 
-    res.json({ success: true, transcript: data.text });
+    // ✅ Handle empty transcript gracefully
+    const transcript = (data.text || '').trim();
+    console.log('Transcript result:', JSON.stringify(transcript));
+    if (!transcript) {
+      return res.status(200).json({ success: false, message: 'empty', debug: { size: req.file.size, ext, contentType } });
+    }
+    res.json({ success: true, transcript });
   } catch (err) {
     console.error('Transcribe error:', err.message);
     res.status(500).json({ success: false, message: err.message });
