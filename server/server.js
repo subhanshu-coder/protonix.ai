@@ -142,48 +142,17 @@ app.post('/api/chat', async (req, res) => {
   if (!message || !botId) return res.status(400).json({ reply: 'Missing message or botId.' });
 
   try {
-    // ── Grok: handled separately via Groq's own API ──
-    if (botId === 'grok') {
-      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY.trim()}`,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({
-          model:       'meta-llama/llama-4-maverick-17b-128e-instruct',
-          messages:    [
-            { role: 'system', content: 'You are a highly capable AI assistant. Be concise, smart and helpful.' },
-            { role: 'user',   content: message },
-          ],
-          max_tokens:  800,
-          temperature: 0.8,
-        }),
-      });
-
-      const groqData = await groqResponse.json();
-      console.log('grok status:', groqResponse.status, JSON.stringify(groqData).slice(0, 200));
-
-      if (!groqResponse.ok || groqData.error) {
-        return res.status(400).json({ reply: `Error: ${groqData.error?.message || 'Groq API error'}` });
-      }
-      return res.json({ reply: groqData.choices[0].message.content });
-    }
-
-    // ── All other bots: OpenRouter ──
-    let apiKey = '', modelPath = '', temperature = 0.4;
+    // ── All bots via OpenRouter ──
+    let apiKey = '', modelPath = '', temperature = 0.7;
     let systemPrompt = 'You are a helpful assistant.';
     const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-    if      (botId === 'perplexity') {
-      apiKey       = process.env.PERPLEXITY_OR_KEY;
-      modelPath    = 'perplexity/sonar';
-      systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.';
-    }
-    else if (botId === 'gemini')   { apiKey = process.env.GEMINI_OR_KEY;   modelPath = 'google/gemini-2.0-flash-001'; }
-    else if (botId === 'claude')   { apiKey = process.env.CLAUDE_OR_KEY;   modelPath = 'anthropic/claude-3.5-sonnet'; }
-    else if (botId === 'gpt')      { apiKey = process.env.GPT_OR_KEY;      modelPath = 'openai/gpt-4o-mini'; }
-    else if (botId === 'deepseek') { apiKey = process.env.DEEPSEEK_OR_KEY; modelPath = 'deepseek/deepseek-chat'; }
+    if      (botId === 'grok')       { apiKey = process.env.GROK_OR_KEY;      modelPath = 'x-ai/grok-3-mini-beta';          systemPrompt = 'You are Grok, a witty and highly capable AI. Be concise and helpful.'; }
+    else if (botId === 'perplexity') { apiKey = process.env.PERPLEXITY_OR_KEY; modelPath = 'perplexity/sonar';               systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.'; }
+    else if (botId === 'gemini')     { apiKey = process.env.GEMINI_OR_KEY;     modelPath = 'google/gemini-2.0-flash-001'; }
+    else if (botId === 'claude')     { apiKey = process.env.CLAUDE_OR_KEY;     modelPath = 'anthropic/claude-3.5-sonnet'; }
+    else if (botId === 'gpt')        { apiKey = process.env.GPT_OR_KEY;        modelPath = 'openai/gpt-4o-mini'; }
+    else if (botId === 'deepseek')   { apiKey = process.env.DEEPSEEK_OR_KEY;   modelPath = 'deepseek/deepseek-chat'; }
 
     if (!apiKey) return res.status(400).json({ reply: `❌ API key not found for: ${botId}` });
 
