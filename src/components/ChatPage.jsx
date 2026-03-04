@@ -49,8 +49,29 @@ const improveQuestion = async (text) => {
     });
     if (!res.ok) return text;
 
-    const data = await res.json();
-    const result = data.reply || '';
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
+    let   result  = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.token) result += parsed.token;
+        } catch { /* skip */ }
+      }
+    }
+
     return result.replace(/^["']|["']$/g, '').trim() || text;
   } catch { return text; }
 };
@@ -531,9 +552,50 @@ const ChatPage = ({ user, onLogout }) => {
 
         if (!res.ok) throw new Error('API error');
 
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        const fullText = data.reply || 'No response.';
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let   buffer  = '';
+        let   fullText = '';
+        let   started  = false;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trim();
+            if (payload === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.error) throw new Error(parsed.error);
+              const token = parsed.token;
+              if (token) {
+                fullText += token;
+                if (!started) {
+                  // Replace loading dots with first token
+                  started = true;
+                  setMessages(p => p.map(m => m.tempId === tempId
+                    ? { ...m, text: fullText, isLoading: false }
+                    : m
+                  ));
+                } else {
+                  // Append token to existing message
+                  setMessages(p => p.map(m => m.tempId === tempId
+                    ? { ...m, text: fullText }
+                    : m
+                  ));
+                }
+              }
+            } catch { /* skip */ }
+          }
+        }
 
         // Finalize message with timestamp, remove tempId
         setMessages(p => {
@@ -780,8 +842,20 @@ const ChatPage = ({ user, onLogout }) => {
                     <div className="comp-msgs">
                       {messages.filter(m => m.sender==='user' || m.botId===bot.id).map((m,i) => (
                         <div key={i} className="msg-in" style={{ display:'flex', justifyContent: m.sender==='user'?'flex-end':'flex-start' }}>
-                          <div style={{ maxWidth:'88%', padding:'11px 15px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.86rem', lineHeight:1.68, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                            {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
+                          <div style={{ maxWidth:'88%' }}>
+                            <div style={{ padding:'11px 15px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.86rem', lineHeight:1.68, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                              {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
+                            </div>
+                            {m.sender==='bot' && !m.isLoading && m.text && (
+                              <div className="msg-actions">
+                                <button className={`msg-action-btn ${copiedId===`${bot.id}-${i}`?'active':''}`} onClick={() => handleCopy(m.text, `${bot.id}-${i}`)}>
+                                  <Copy size={11}/>{copiedId===`${bot.id}-${i}` ? 'Copied!' : 'Copy'}
+                                </button>
+                                <button className={`msg-action-btn ${speakingId===`${bot.id}-${i}`?'active':''}`} onClick={() => handleSpeak(m.text, `${bot.id}-${i}`)}>
+                                  {speakingId===`${bot.id}-${i}` ? <><VolumeX size={11}/>Stop</> : <><Volume2 size={11}/>Speak</>}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
