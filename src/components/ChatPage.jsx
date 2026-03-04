@@ -40,11 +40,40 @@ const persistChats = (e, c) => { try { localStorage.setItem(storageKey(e), JSON.
 const improveQuestion = async (text) => {
   try {
     const res = await fetch(`${API}/api/chat`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: `Fix grammar and improve this question for better AI response. Return ONLY the improved question:\n\n"${text}"`, botId: 'deepseek' }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `You are a prompt engineer. Rewrite the following message to be clearer, grammatically correct, and optimized to get the best possible AI response. Fix any spelling or grammar errors. Return ONLY the rewritten message, no explanation, no quotes:\n\n${text}`,
+        botId: 'deepseek',
+      }),
     });
-    const data = await res.json();
-    return data.reply?.replace(/^["']|["']$/g, '').trim() || text;
+    if (!res.ok) return text;
+
+    // Read SSE stream and collect all tokens
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
+    let   result  = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.token) result += parsed.token;
+        } catch { /* skip */ }
+      }
+    }
+
+    return result.replace(/^["']|["']$/g, '').trim() || text;
   } catch { return text; }
 };
 
