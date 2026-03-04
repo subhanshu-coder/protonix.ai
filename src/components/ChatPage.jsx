@@ -4,7 +4,7 @@ import {
   Send, Settings, Menu, User,
   Mic, MicOff, MessageSquare, X, LogOut, Loader2,
   ArrowDown, Moon, Sun, Mail, Clock, Trash2, Sparkles,
-  ChevronDown, LayoutGrid, Check
+  ChevronDown, LayoutGrid, Check, Copy, Volume2, VolumeX
 } from 'lucide-react';
 
 import gptLogo        from '../assets/logos/gpt.png';
@@ -208,6 +208,8 @@ const ChatPage = ({ user, onLogout }) => {
   const [improveToast,   setImproveToast]   = useState('');
   const [showScrollBtn,  setShowScrollBtn]  = useState(false);
   const [respondingBots, setRespondingBots] = useState(new Set());
+  const [speakingId,    setSpeakingId]    = useState(null);
+  const [copiedId,      setCopiedId]      = useState(null);
 
   const isComparisonMode = Object.values(compBots).some(Boolean);
   const activeCompBots   = bots.filter(b => compBots[b.id]);
@@ -221,6 +223,7 @@ const ChatPage = ({ user, onLogout }) => {
   const recognitionRef   = useRef(null);
   const audioCtxRef      = useRef(null);
   const analyserRef      = useRef(null);
+  const speechRef        = useRef(null);
 
   const dm      = isDarkMode;
   const bg      = dm ? '#0d0d10' : '#f5f6fa';
@@ -432,7 +435,76 @@ const ChatPage = ({ user, onLogout }) => {
     setTimeout(() => setImproveToast(''), 1800);
   };
 
-  const handleSend = useCallback(() => {
+  const handleCopy = (msgText, id) => {
+    navigator.clipboard.writeText(msgText).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
+  const cleanForSpeech = (raw) => {
+    return raw
+      // Remove all emojis (unicode emoji ranges)
+      .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
+      .replace(/[\u{2600}-\u{27BF}]/gu, '')
+      .replace(/[\u{FE00}-\u{FEFF}]/gu, '')
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+      .replace(/[\u{1FA00}-\u{1FA9F}]/gu, '')
+      // Remove markdown bold/italic symbols
+      .replace(/\*\*?(.*?)\*\*?/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
+      // Remove markdown code blocks
+      .replace(/```[\s\S]*?```/g, 'code block omitted.')
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove URLs
+      .replace(/https?:\/\/\S+/g, '')
+      // Remove bullet/list markers
+      .replace(/^[\s]*[-*•]\s+/gm, '')
+      .replace(/^[\s]*\d+\.\s+/gm, '')
+      // Remove hashtags used as headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Collapse extra whitespace
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+  };
+
+  const handleSpeak = async (msgText, id) => {
+    if (speakingId === id) {
+      // Stop current audio
+      if (speechRef.current) { speechRef.current.pause(); speechRef.current = null; }
+      setSpeakingId(null);
+      return;
+    }
+    // Stop any playing audio
+    if (speechRef.current) { speechRef.current.pause(); speechRef.current = null; }
+    setSpeakingId(id);
+    try {
+      const res = await fetch(`${API}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanForSpeech(msgText) }),
+      });
+      if (!res.ok) throw new Error('TTS failed');
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      speechRef.current = audio;
+      audio.onended = () => { setSpeakingId(null); URL.revokeObjectURL(url); };
+      audio.onerror = () => { setSpeakingId(null); URL.revokeObjectURL(url); };
+      audio.play();
+    } catch (err) {
+      console.error('TTS error:', err);
+      setSpeakingId(null);
+      // Fallback to browser TTS
+      const utt = new SpeechSynthesisUtterance(cleanForSpeech(msgText));
+      utt.rate = 1.35; utt.pitch = 0.7;
+      utt.onend = () => setSpeakingId(null);
+      window.speechSynthesis.speak(utt);
+    }
+  };
+
+    const handleSend = useCallback(() => {
     if (!inputMessage.trim()) return;
     // Block if any bot is still streaming
     if (respondingBots.size > 0) return;
@@ -587,6 +659,11 @@ const ChatPage = ({ user, onLogout }) => {
 
     /* textarea placeholder */
     textarea::placeholder { color:${muted}; }
+
+    .msg-actions { display:flex; gap:5px; margin-top:6px; }
+    .msg-action-btn { background:none; border:1px solid ${border}; border-radius:7px; color:${muted}; cursor:pointer; padding:3px 9px; display:inline-flex; align-items:center; gap:4px; font-size:.65rem; font-weight:600; font-family:'Plus Jakarta Sans',sans-serif; transition:all .15s; }
+    .msg-action-btn:hover { background:${card}; color:${text}; border-color:${accent}55; }
+    .msg-action-btn.active { color:${accent}; border-color:${accent}55; background:${accent}15; }
   `;
 
   return (
@@ -782,6 +859,16 @@ const ChatPage = ({ user, onLogout }) => {
                     <div style={{ padding:'12px 16px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.9rem', lineHeight:1.72, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
                       {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
                     </div>
+                    {m.sender==='bot' && !m.isLoading && m.text && (
+                      <div className="msg-actions">
+                        <button className={`msg-action-btn ${copiedId===i?'active':''}`} onClick={() => handleCopy(m.text, i)}>
+                          <Copy size={11}/>{copiedId===i ? 'Copied!' : 'Copy'}
+                        </button>
+                        <button className={`msg-action-btn ${speakingId===i?'active':''}`} onClick={() => handleSpeak(m.text, i)}>
+                          {speakingId===i ? <><VolumeX size={11}/>Stop</> : <><Volume2 size={11}/>Speak</>}
+                        </button>
+                      </div>
+                    )}
                     {m.time && <p style={{ margin:'3px 2px 0', fontSize:'.62rem', color:muted }}>{formatTime(m.time)}</p>}
                   </div>
                 </div>

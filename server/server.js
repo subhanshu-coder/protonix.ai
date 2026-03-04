@@ -11,7 +11,6 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,97 +135,86 @@ const sendEmail = async ({ to, subject, html }) => {
 console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide');
 
 // ═══════════════════════════════════════════════════════════
-// CHAT ROUTE — SSE Streaming
+// CHAT ROUTE
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
   if (!message || !botId) return res.status(400).json({ reply: 'Missing message or botId.' });
 
-  // ── SSE headers so frontend can read token-by-token ──
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // disable nginx buffering on Render
-
-  const send  = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
-  const done  = ()     => { res.write('data: [DONE]\n\n'); res.end(); };
-  const error = (msg)  => { send({ error: msg }); res.end(); };
-
   try {
-    const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    // ── Grok: handled separately via Groq's own API ──
+    if (botId === 'grok') {
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY.trim()}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          model:       'meta-llama/llama-4-maverick-17b-128e-instruct',
+          messages:    [
+            { role: 'system', content: 'You are a highly capable AI assistant. Be concise, smart and helpful.' },
+            { role: 'user',   content: message },
+          ],
+          max_tokens:  800,
+          temperature: 0.8,
+        }),
+      });
+
+      const groqData = await groqResponse.json();
+      console.log('grok status:', groqResponse.status, JSON.stringify(groqData).slice(0, 200));
+
+      if (!groqResponse.ok || groqData.error) {
+        return res.status(400).json({ reply: `Error: ${groqData.error?.message || 'Groq API error'}` });
+      }
+      return res.json({ reply: groqData.choices[0].message.content });
+    }
+
+    // ── All other bots: OpenRouter ──
     let apiKey = '', modelPath = '', temperature = 0.4;
     let systemPrompt = 'You are a helpful assistant.';
+    const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-    if (botId === 'grok') {
-      apiKey       = (process.env.GROQ_API_KEY || '').trim();
-      modelPath    = 'x-ai/grok-3-mini';
-      temperature  = 0.8;
-      systemPrompt = 'You are a highly capable AI assistant. Be concise, smart and helpful.';
-    }
-    else if (botId === 'perplexity') {
-      apiKey       = (process.env.PERPLEXITY_OR_KEY || '').trim();
+    if      (botId === 'perplexity') {
+      apiKey       = process.env.PERPLEXITY_OR_KEY;
       modelPath    = 'perplexity/sonar';
       systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.';
     }
-    else if (botId === 'gemini')   { apiKey = (process.env.GEMINI_OR_KEY   || '').trim(); modelPath = 'google/gemini-2.0-flash-001'; }
-    else if (botId === 'claude')   { apiKey = (process.env.CLAUDE_OR_KEY   || '').trim(); modelPath = 'anthropic/claude-3.5-sonnet'; }
-    else if (botId === 'gpt')      { apiKey = (process.env.GPT_OR_KEY      || '').trim(); modelPath = 'openai/gpt-4o-mini'; }
-    else if (botId === 'deepseek') { apiKey = (process.env.DEEPSEEK_OR_KEY || '').trim(); modelPath = 'deepseek/deepseek-chat'; }
+    else if (botId === 'gemini')   { apiKey = process.env.GEMINI_OR_KEY;   modelPath = 'google/gemini-2.0-flash-001'; }
+    else if (botId === 'claude')   { apiKey = process.env.CLAUDE_OR_KEY;   modelPath = 'anthropic/claude-3.5-sonnet'; }
+    else if (botId === 'gpt')      { apiKey = process.env.GPT_OR_KEY;      modelPath = 'openai/gpt-4o-mini'; }
+    else if (botId === 'deepseek') { apiKey = process.env.DEEPSEEK_OR_KEY; modelPath = 'deepseek/deepseek-chat'; }
 
-    if (!apiKey) return error(`❌ API key not configured for: ${botId}`);
+    if (!apiKey) return res.status(400).json({ reply: `❌ API key not found for: ${botId}` });
 
-    const upstream = await fetch(apiUrl, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${apiKey.trim()}`,
         'HTTP-Referer':  process.env.CLIENT_URL || '',
         'X-Title':       'Protonix AI',
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        model:    modelPath,
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
+        model:       modelPath,
+        messages:    [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
         max_tokens:  800,
         temperature,
-        stream:      true,   // ✅ request token-by-token stream from OpenRouter
       }),
     });
 
-    if (!upstream.ok) {
-      const errData = await upstream.json().catch(() => ({}));
-      return error(errData.error?.message || 'Upstream API error');
+    const data = await response.json();
+    console.log(`${botId} status:`, response.status, JSON.stringify(data).slice(0, 200));
+
+    if (!response.ok || data.error) {
+      return res.status(400).json({ reply: `Error: ${data.error?.message || 'API error — check OpenRouter credits'}` });
     }
 
-    // ── Pipe OpenRouter SSE → our SSE ──
-    const reader  = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    let   buffer  = '';
+    res.json({ reply: data.choices[0].message.content });
 
-    while (true) {
-      const { done: streamDone, value } = await reader.read();
-      if (streamDone) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete line in buffer
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === '[DONE]') { done(); return; }
-        try {
-          const parsed = JSON.parse(payload);
-          const token  = parsed.choices?.[0]?.delta?.content;
-          if (token) send({ token });
-        } catch { /* skip malformed */ }
-      }
-    }
-
-    done();
   } catch (err) {
-    console.error('Chat stream error:', err.message);
-    error(`Server Error: ${err.message}`);
+    console.error('Chat error:', err.message);
+    res.status(500).json({ reply: `Server Error: ${err.message}` });
   }
 });
 
@@ -385,63 +373,38 @@ app.get('/api/test-email', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════
-// SPEECH TO TEXT — Groq Whisper (FREE, fast, works on ALL browsers incl Android)
-// Uses your existing GROQ_API_KEY — no new key needed!
+// ELEVENLABS TTS
 // ═══════════════════════════════════════════════════════════
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
-
-app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
+app.post('/api/tts', async (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'No text provided' });
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No audio file.' });
-
-    // ✅ Uses GROQ_SPEECH_KEY (real gsk_... key from console.groq.com) — FREE
-    const apiKey = (process.env.GROQ_SPEECH_KEY || '').trim();
-    if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not set in env.' });
-
-    const originalName = req.file.originalname || 'audio.mp4';
-    const ext          = originalName.split('.').pop() || 'mp4';
-    const contentType  = req.file.mimetype || 'audio/mp4';
-
-    console.log(`Transcribe: file=${originalName} size=${req.file.size} mime=${contentType}`);
-
-    // ✅ Use node-fetch compatible FormData (built-in global in Node 18+)
-    const { Blob: NodeBlob } = await import('buffer');
-    const audioBlob = new Blob([req.file.buffer], { type: contentType });
-
-    const nativeForm = new globalThis.FormData();
-    nativeForm.append('file', audioBlob, `audio.${ext}`);
-    nativeForm.append('model', 'whisper-large-v3-turbo');
-    nativeForm.append('response_format', 'json');
-
-    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method:  'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-      body:    nativeForm,
+    const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
+    const voiceId = 'pNInz6obpgDQGcFmaJgB'; // Adam — natural male voice
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.4, use_speaker_boost: true },
+      }),
     });
-
-    const data = await groqRes.json();
-    console.log('Groq Whisper response:', JSON.stringify(data).slice(0, 200));
-
-    if (!groqRes.ok) {
-      console.error('Groq Whisper error:', data);
-      return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
+    if (!response.ok) {
+      const err = await response.text();
+      return res.status(500).json({ error: 'TTS failed', detail: err });
     }
-
-    const transcript = (data.text || '').trim();
-    console.log('Transcript result:', JSON.stringify(transcript));
-    if (!transcript) {
-      return res.status(200).json({ success: false, message: 'empty', debug: { size: req.file.size, ext, contentType } });
-    }
-    res.json({ success: true, transcript });
+    const audioBuffer = await response.arrayBuffer();
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(Buffer.from(audioBuffer));
   } catch (err) {
-    console.error('Transcribe error:', err.message);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ═══════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════
 app.get('/', (req, res) => res.json({ status: 'ok', message: 'Protonix AI Backend Running' }));
