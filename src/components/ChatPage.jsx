@@ -49,30 +49,8 @@ const improveQuestion = async (text) => {
     });
     if (!res.ok) return text;
 
-    // Read SSE stream and collect all tokens
-    const reader  = res.body.getReader();
-    const decoder = new TextDecoder();
-    let   buffer  = '';
-    let   result  = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed.token) result += parsed.token;
-        } catch { /* skip */ }
-      }
-    }
-
+    const data = await res.json();
+    const result = data.reply || '';
     return result.replace(/^["']|["']$/g, '').trim() || text;
   } catch { return text; }
 };
@@ -553,50 +531,9 @@ const ChatPage = ({ user, onLogout }) => {
 
         if (!res.ok) throw new Error('API error');
 
-        const reader  = res.body.getReader();
-        const decoder = new TextDecoder();
-        let   buffer  = '';
-        let   fullText = '';
-        let   started  = false;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const payload = trimmed.slice(5).trim();
-            if (payload === '[DONE]') break;
-
-            try {
-              const parsed = JSON.parse(payload);
-              if (parsed.error) throw new Error(parsed.error);
-              const token = parsed.token;
-              if (token) {
-                fullText += token;
-                if (!started) {
-                  // Replace loading dots with first token
-                  started = true;
-                  setMessages(p => p.map(m => m.tempId === tempId
-                    ? { ...m, text: fullText, isLoading: false }
-                    : m
-                  ));
-                } else {
-                  // Append token to existing message
-                  setMessages(p => p.map(m => m.tempId === tempId
-                    ? { ...m, text: fullText }
-                    : m
-                  ));
-                }
-              }
-            } catch { /* skip */ }
-          }
-        }
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const fullText = data.reply || 'No response.';
 
         // Finalize message with timestamp, remove tempId
         setMessages(p => {
