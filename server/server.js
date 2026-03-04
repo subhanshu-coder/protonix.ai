@@ -11,6 +11,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import multer from 'multer';
+import FormData from 'form-data';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -381,6 +383,49 @@ app.get('/api/test-email', async (req, res) => {
   } catch (err) {
     console.error('Test email error:', err.message);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════
+// SPEECH TO TEXT — Groq Whisper (FREE, fast, works on ALL browsers incl Android)
+// Uses your existing GROQ_API_KEY — no new key needed!
+// ═══════════════════════════════════════════════════════════
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No audio file.' });
+
+    // ✅ Uses GROQ_SPEECH_KEY (real gsk_... key from console.groq.com) — FREE
+    const apiKey = (process.env.GROQ_SPEECH_KEY || '').trim();
+    if (!apiKey) return res.status(400).json({ success: false, message: 'GROQ_SPEECH_KEY not set in env.' });
+
+    const form = new FormData();
+    form.append('file', req.file.buffer, {
+      filename:    'audio.webm',
+      contentType: req.file.mimetype || 'audio/webm',
+    });
+    form.append('model', 'whisper-large-v3-turbo'); // ✅ Free on Groq, very fast
+    form.append('response_format', 'json');
+    form.append('language', 'en');
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, ...form.getHeaders() },
+      body:    form,
+    });
+
+    const data = await groqRes.json();
+    if (!groqRes.ok) {
+      console.error('Groq Whisper error:', data);
+      return res.status(400).json({ success: false, message: data.error?.message || 'Transcription failed.' });
+    }
+
+    res.json({ success: true, transcript: data.text });
+  } catch (err) {
+    console.error('Transcribe error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
