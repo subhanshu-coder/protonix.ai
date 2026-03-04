@@ -178,6 +178,7 @@ const ChatPage = ({ user, onLogout }) => {
   const [showMultiModal, setShowMultiModal] = useState(false);
   const [improveToast,   setImproveToast]   = useState('');
   const [showScrollBtn,  setShowScrollBtn]  = useState(false);
+  const [respondingBots, setRespondingBots] = useState(new Set());
 
   const isComparisonMode = Object.values(compBots).some(Boolean);
   const activeCompBots   = bots.filter(b => compBots[b.id]);
@@ -273,33 +274,117 @@ const ChatPage = ({ user, onLogout }) => {
 
   const handleSend = useCallback(() => {
     if (!inputMessage.trim()) return;
+    // Block if any bot is still streaming
+    if (respondingBots.size > 0) return;
+
     const targets = isComparisonMode ? activeCompBots : [selectedBot || defaultBot];
-    const userMsg  = { text:inputMessage, sender:'user', time:Date.now() };
+    const userMsg  = { text: inputMessage, sender: 'user', time: Date.now() };
     const newMsgs  = [...messages, userMsg];
     setMessages(newMsgs);
     const chatId = activeChatId || Date.now();
     if (!activeChatId) {
       setActiveChatId(chatId);
-      setChatHistory(p => [{ id:chatId, title:inputMessage.slice(0,52), botId:targets[0]?.id, messages:newMsgs, updatedAt:Date.now() }, ...p]);
+      setChatHistory(p => [{ id: chatId, title: inputMessage.slice(0, 52), botId: targets[0]?.id, messages: newMsgs, updatedAt: Date.now() }, ...p]);
     } else {
-      setChatHistory(ch => ch.map(c => c.id===chatId ? {...c, messages:newMsgs, updatedAt:Date.now()} : c));
+      setChatHistory(ch => ch.map(c => c.id === chatId ? { ...c, messages: newMsgs, updatedAt: Date.now() } : c));
     }
     const msg = inputMessage;
     setInputMessage('');
+
+    // Mark all target bots as responding
+    setRespondingBots(new Set(targets.map(b => b.id)));
+
     targets.forEach(async (bot) => {
-      const tempId = Date.now() + Math.random();
-      setMessages(p => [...p, { text:'', sender:'bot', botId:bot.id, botLogo:bot.logo, botName:bot.name, botAccent:bot.accent, isLoading:true, tempId }]);
+      const tempId = `${Date.now()}-${bot.id}`;
+
+      // Insert loading placeholder
+      setMessages(p => [...p, { text: '', sender: 'bot', botId: bot.id, botLogo: bot.logo, botName: bot.name, botAccent: bot.accent, isLoading: true, tempId }]);
+
       try {
-        const res  = await fetch(`${API}/api/chat`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message:msg, botId:bot.id }) });
-        const data = await res.json();
-        setMessages(p => { const u=[...p.filter(m=>m.tempId!==tempId),{text:data.reply,sender:'bot',botId:bot.id,botLogo:bot.logo,botName:bot.name,botAccent:bot.accent,time:Date.now()}]; setChatHistory(ch=>ch.map(c=>c.id===chatId?{...c,messages:u,updatedAt:Date.now()}:c)); return u; });
+        const res = await fetch(`${API}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, botId: bot.id }),
+        });
+
+        if (!res.ok) throw new Error('API error');
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let   buffer  = '';
+        let   fullText = '';
+        let   started  = false;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const payload = trimmed.slice(5).trim();
+            if (payload === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.error) throw new Error(parsed.error);
+              const token = parsed.token;
+              if (token) {
+                fullText += token;
+                if (!started) {
+                  // Replace loading dots with first token
+                  started = true;
+                  setMessages(p => p.map(m => m.tempId === tempId
+                    ? { ...m, text: fullText, isLoading: false }
+                    : m
+                  ));
+                } else {
+                  // Append token to existing message
+                  setMessages(p => p.map(m => m.tempId === tempId
+                    ? { ...m, text: fullText }
+                    : m
+                  ));
+                }
+              }
+            } catch { /* skip */ }
+          }
+        }
+
+        // Finalize message with timestamp, remove tempId
+        setMessages(p => {
+          const u = p.map(m => m.tempId === tempId
+            ? { text: fullText || 'No response.', sender: 'bot', botId: bot.id, botLogo: bot.logo, botName: bot.name, botAccent: bot.accent, time: Date.now() }
+            : m
+          );
+          setChatHistory(ch => ch.map(c => c.id === chatId ? { ...c, messages: u, updatedAt: Date.now() } : c));
+          return u;
+        });
+
       } catch {
-        setMessages(p => { const u=[...p.filter(m=>m.tempId!==tempId),{text:'Error: No response.',sender:'bot',botId:bot.id,botLogo:bot.logo,botName:bot.name,botAccent:bot.accent}]; setChatHistory(ch=>ch.map(c=>c.id===chatId?{...c,messages:u}:c)); return u; });
+        setMessages(p => {
+          const u = p.map(m => m.tempId === tempId
+            ? { text: '⚠️ Error: No response.', sender: 'bot', botId: bot.id, botLogo: bot.logo, botName: bot.name, botAccent: bot.accent }
+            : m
+          );
+          setChatHistory(ch => ch.map(c => c.id === chatId ? { ...c, messages: u } : c));
+          return u;
+        });
+      } finally {
+        // Mark this bot as done responding
+        setRespondingBots(prev => {
+          const next = new Set(prev);
+          next.delete(bot.id);
+          return next;
+        });
       }
     });
-  }, [inputMessage, messages, selectedBot, isComparisonMode, activeCompBots, activeChatId]);
+  }, [inputMessage, messages, selectedBot, isComparisonMode, activeCompBots, activeChatId, respondingBots]);
 
-  const handleKeyDown = (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+  const handleKeyDown = (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (respondingBots.size === 0) handleSend(); } };
   const handleLogout  = () => { onLogout(); navigate('/'); };
 
   const css = `
@@ -615,9 +700,22 @@ const ChatPage = ({ user, onLogout }) => {
               )}
 
               {/* Send */}
-              <button className="send-btn" onClick={handleSend} disabled={!inputMessage.trim()}
-                style={{ background:inputMessage.trim()?`linear-gradient(135deg,${accent},#7c3aed)`:'rgba(91,95,207,0.1)', border:'none', borderRadius:11, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:inputMessage.trim()?'pointer':'not-allowed', flexShrink:0 }}>
-                <Send size={14} color={inputMessage.trim()?'#fff':muted}/>
+              <button className="send-btn" onClick={handleSend}
+                disabled={!inputMessage.trim() || respondingBots.size > 0}
+                title={respondingBots.size > 0 ? 'Waiting for response…' : 'Send'}
+                style={{
+                  background: (inputMessage.trim() && respondingBots.size === 0)
+                    ? `linear-gradient(135deg,${accent},#7c3aed)`
+                    : 'rgba(91,95,207,0.1)',
+                  border: 'none', borderRadius: 11, width: 34, height: 34,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: (inputMessage.trim() && respondingBots.size === 0) ? 'pointer' : 'not-allowed',
+                  flexShrink: 0, position: 'relative', overflow: 'hidden',
+                }}>
+                {respondingBots.size > 0
+                  ? <Loader2 size={14} color={muted} className="spin"/>
+                  : <Send size={14} color={inputMessage.trim() ? '#fff' : muted}/>
+                }
               </button>
             </div>
           </div>

@@ -26,10 +26,8 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.CLIENT_URL_ALT,
   'http://localhost:5173',
-  'http://localhost:5174',     // ✅ ADDED — fixes CORS error
   'http://localhost:3000',
   'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',     // ✅ ADDED
 ].filter(Boolean);
 
 const corsOptions = {
@@ -137,12 +135,21 @@ const sendEmail = async ({ to, subject, html }) => {
 console.log('✅ Email (Brevo HTTP API) ready — sends to any email worldwide');
 
 // ═══════════════════════════════════════════════════════════
-// CHAT ROUTE
-// ✅ ALL bots now go through OpenRouter (one unified API)
+// CHAT ROUTE — SSE Streaming
 // ═══════════════════════════════════════════════════════════
 app.post('/api/chat', async (req, res) => {
   const { message, botId } = req.body;
   if (!message || !botId) return res.status(400).json({ reply: 'Missing message or botId.' });
+
+  // ── SSE headers so frontend can read token-by-token ──
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // disable nginx buffering on Render
+
+  const send  = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+  const done  = ()     => { res.write('data: [DONE]\n\n'); res.end(); };
+  const error = (msg)  => { send({ error: msg }); res.end(); };
 
   try {
     const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
@@ -150,7 +157,6 @@ app.post('/api/chat', async (req, res) => {
     let systemPrompt = 'You are a helpful assistant.';
 
     if (botId === 'grok') {
-      // ✅ FIXED: your GROQ_API_KEY is an OpenRouter key (sk-or-v1-...), use it via OpenRouter
       apiKey       = (process.env.GROQ_API_KEY || '').trim();
       modelPath    = 'x-ai/grok-3-mini';
       temperature  = 0.8;
@@ -161,26 +167,14 @@ app.post('/api/chat', async (req, res) => {
       modelPath    = 'perplexity/sonar';
       systemPrompt = 'You are a real-time search specialist. Always use the web for 2026 data. Provide citations.';
     }
-    else if (botId === 'gemini') {
-      apiKey    = (process.env.GEMINI_OR_KEY || '').trim();
-      modelPath = 'google/gemini-2.0-flash-001';
-    }
-    else if (botId === 'claude') {
-      apiKey    = (process.env.CLAUDE_OR_KEY || '').trim();
-      modelPath = 'anthropic/claude-3.5-sonnet';
-    }
-    else if (botId === 'gpt') {
-      apiKey    = (process.env.GPT_OR_KEY || '').trim();
-      modelPath = 'openai/gpt-4o-mini';
-    }
-    else if (botId === 'deepseek') {
-      apiKey    = (process.env.DEEPSEEK_OR_KEY || '').trim();
-      modelPath = 'deepseek/deepseek-chat';
-    }
+    else if (botId === 'gemini')   { apiKey = (process.env.GEMINI_OR_KEY   || '').trim(); modelPath = 'google/gemini-2.0-flash-001'; }
+    else if (botId === 'claude')   { apiKey = (process.env.CLAUDE_OR_KEY   || '').trim(); modelPath = 'anthropic/claude-3.5-sonnet'; }
+    else if (botId === 'gpt')      { apiKey = (process.env.GPT_OR_KEY      || '').trim(); modelPath = 'openai/gpt-4o-mini'; }
+    else if (botId === 'deepseek') { apiKey = (process.env.DEEPSEEK_OR_KEY || '').trim(); modelPath = 'deepseek/deepseek-chat'; }
 
-    if (!apiKey) return res.status(400).json({ reply: `❌ API key not configured for: ${botId}` });
+    if (!apiKey) return error(`❌ API key not configured for: ${botId}`);
 
-    const response = await fetch(apiUrl, {
+    const upstream = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -189,25 +183,49 @@ app.post('/api/chat', async (req, res) => {
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        model:       modelPath,
-        messages:    [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
+        model:    modelPath,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
         max_tokens:  800,
         temperature,
+        stream:      true,   // ✅ request token-by-token stream from OpenRouter
       }),
     });
 
-    const data = await response.json();
-    console.log(`${botId} status:`, response.status, JSON.stringify(data).slice(0, 200));
-
-    if (!response.ok || data.error) {
-      return res.status(400).json({ reply: `Error: ${data.error?.message || 'API error — check OpenRouter credits'}` });
+    if (!upstream.ok) {
+      const errData = await upstream.json().catch(() => ({}));
+      return error(errData.error?.message || 'Upstream API error');
     }
 
-    res.json({ reply: data.choices[0].message.content });
+    // ── Pipe OpenRouter SSE → our SSE ──
+    const reader  = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
 
+    while (true) {
+      const { done: streamDone, value } = await reader.read();
+      if (streamDone) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line in buffer
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]') { done(); return; }
+        try {
+          const parsed = JSON.parse(payload);
+          const token  = parsed.choices?.[0]?.delta?.content;
+          if (token) send({ token });
+        } catch { /* skip malformed */ }
+      }
+    }
+
+    done();
   } catch (err) {
-    console.error('Chat error:', err.message);
-    res.status(500).json({ reply: `Server Error: ${err.message}` });
+    console.error('Chat stream error:', err.message);
+    error(`Server Error: ${err.message}`);
   }
 });
 
