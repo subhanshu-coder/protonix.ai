@@ -12,7 +12,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import multer from 'multer';
-import FormData from 'form-data';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -425,25 +425,20 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     const ext = originalName.split('.').pop()?.toLowerCase() || 'webm';
     const safeExt = ['webm','ogg','mp4','m4a','wav','mp3','flac'].includes(ext) ? ext : 'webm';
 
-    // Build multipart form for Groq
-    const form = new FormData();
-    form.append('file', req.file.buffer, {
-      filename:    `audio.${safeExt}`,
-      contentType: req.file.mimetype?.split(';')[0] || 'audio/webm',
-      knownLength: req.file.buffer.length,   // ← fixes EOF error
-    });
+    // Build multipart form using native Blob + FormData (works with Node 18+ native fetch)
+    const mimeType = req.file.mimetype?.split(';')[0] || 'audio/webm';
+    const audioBlob = new Blob([req.file.buffer], { type: mimeType });
+    const form = new globalThis.FormData();
+    form.append('file', audioBlob, `audio.${safeExt}`);
     form.append('model', 'whisper-large-v3-turbo');
     form.append('response_format', 'json');
     form.append('language', 'en');
 
-    console.log(`Transcribe: ext=${safeExt}, size=${req.file.size}b, mime=${req.file.mimetype}`);
+    console.log(`Transcribe: ext=${safeExt}, size=${req.file.size}b, mime=${mimeType}`);
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        ...form.getHeaders(),
-      },
+      headers: { 'Authorization': `Bearer ${apiKey}` },
       body: form,
     });
 
