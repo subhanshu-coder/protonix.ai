@@ -18,6 +18,64 @@ const API = import.meta.env.VITE_API_URL || 'https://protonix-ai.onrender.com';
 
 const getGreeting = () => {
   const h = new Date().getHours();
+
+// ── Markdown renderer — converts **bold**, ### headers, - bullets, [1] citations ──
+const renderMarkdown = (text, textColor, accentColor) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  const parseInline = (str) => {
+    // Bold **text**
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, idx) => {
+      if (p.startsWith('**') && p.endsWith('**')) {
+        return <strong key={idx} style={{ fontWeight:700, color: textColor }}>{p.slice(2,-2)}</strong>;
+      }
+      // Citations [1][2] — style them small
+      return <span key={idx}>{p.replace(/\[\d+\]/g, m => '')}</span>;
+    });
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Empty line
+    if (!trimmed) { elements.push(<div key={i} style={{ height:6 }}/>); i++; continue; }
+
+    // ### Header
+    if (trimmed.startsWith('### ')) {
+      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'.92rem', color: accentColor }}>{trimmed.slice(4)}</p>);
+      i++; continue;
+    }
+    if (trimmed.startsWith('## ')) {
+      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'.95rem', color: accentColor }}>{trimmed.slice(3)}</p>);
+      i++; continue;
+    }
+    if (trimmed.startsWith('# ')) {
+      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'1rem', color: accentColor }}>{trimmed.slice(2)}</p>);
+      i++; continue;
+    }
+
+    // Bullet - or *
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const items = [];
+      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
+        items.push(<li key={i} style={{ marginBottom:3 }}>{parseInline(lines[i].trim().slice(2))}</li>);
+        i++;
+      }
+      elements.push(<ul key={`ul-${i}`} style={{ margin:'4px 0', paddingLeft:18, display:'flex', flexDirection:'column', gap:2 }}>{items}</ul>);
+      continue;
+    }
+
+    // Normal paragraph
+    elements.push(<p key={i} style={{ margin:'2px 0', lineHeight:1.7 }}>{parseInline(trimmed)}</p>);
+    i++;
+  }
+  return <div style={{ fontSize:'.9rem', color: textColor }}>{elements}</div>;
+};
   if (h < 12) return 'Good morning,';
   if (h < 17) return 'Good afternoon,';
   if (h < 21) return 'Good evening,';
@@ -853,8 +911,8 @@ const ChatPage = ({ user, onLogout }) => {
                     <div className="comp-msgs">
                       {messages.filter(m => m.sender==='user' || m.botId===bot.id).map((m,i) => (
                         <div key={i} className="msg-in" style={{ display:'flex', justifyContent: m.sender==='user'?'flex-end':'flex-start' }}>
-                          <div style={{ maxWidth:'88%', padding:'11px 15px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.86rem', lineHeight:1.68, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                            {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
+                          <div style={{ maxWidth:'88%', padding:'11px 15px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.86rem', lineHeight:1.68, color: m.sender==='user'?'#fff':text, wordBreak:'break-word' }}>
+                            {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : (m.sender==='bot' ? renderMarkdown(m.text, text, bot.accent||accent) : <span style={{whiteSpace:'pre-wrap'}}>{m.text}</span>)}
                           </div>
                         </div>
                       ))}
@@ -878,8 +936,8 @@ const ChatPage = ({ user, onLogout }) => {
                   </div>
                   <div style={{ maxWidth:'80%', minWidth:0 }}>
                     {m.sender!=='user' && <p style={{ margin:'0 0 4px 2px', fontSize:'.66rem', fontWeight:800, color:m.botAccent||accent, textTransform:'uppercase', letterSpacing:'.08em' }}>{m.botName}</p>}
-                    <div style={{ padding:'12px 16px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.9rem', lineHeight:1.72, color: m.sender==='user'?'#fff':text, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                      {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : m.text}
+                    <div style={{ padding:'12px 16px', borderRadius: m.sender==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background: m.sender==='user'?accent:card, border: m.sender!=='user'?`1px solid ${border}`:'none', fontSize:'.9rem', lineHeight:1.72, color: m.sender==='user'?'#fff':text, wordBreak:'break-word' }}>
+                      {m.isLoading ? <><span className="tdot"/><span className="tdot"/><span className="tdot"/></> : (m.sender==='bot' ? renderMarkdown(m.text, text, m.botAccent||accent) : <span style={{whiteSpace:'pre-wrap'}}>{m.text}</span>)}
                     </div>
                     {m.sender==='bot' && !m.isLoading && m.text && (
                       <div className="msg-actions">
