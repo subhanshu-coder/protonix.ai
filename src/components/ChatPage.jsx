@@ -19,121 +19,7 @@ const API = import.meta.env.VITE_API_URL || 'https://protonix-ai.onrender.com';
 const getGreeting = () => {
   const h = new Date().getHours();
 
-// ── Markdown renderer — converts **bold**, ### headers, - bullets, [1] citations ──
-const renderMarkdown = (text, textColor, accentColor) => {
-  if (!text) return null;
-  const lines = text.split('\n');
-  const elements = [];
-  let i = 0;
-
-  const parseInline = (str) => {
-    // Bold **text**
-    const parts = str.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((p, idx) => {
-      if (p.startsWith('**') && p.endsWith('**')) {
-        return <strong key={idx} style={{ fontWeight:700, color: textColor }}>{p.slice(2,-2)}</strong>;
-      }
-      // Citations [1][2] — style them small
-      return <span key={idx}>{p.replace(/\[\d+\]/g, m => '')}</span>;
-    });
-  };
-
-  while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Empty line
-    if (!trimmed) { elements.push(<div key={i} style={{ height:6 }}/>); i++; continue; }
-
-    // ### Header
-    if (trimmed.startsWith('### ')) {
-      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'.92rem', color: accentColor }}>{trimmed.slice(4)}</p>);
-      i++; continue;
-    }
-    if (trimmed.startsWith('## ')) {
-      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'.95rem', color: accentColor }}>{trimmed.slice(3)}</p>);
-      i++; continue;
-    }
-    if (trimmed.startsWith('# ')) {
-      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'1rem', color: accentColor }}>{trimmed.slice(2)}</p>);
-      i++; continue;
-    }
-
-    // Bullet - or *
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      const items = [];
-      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
-        items.push(<li key={i} style={{ marginBottom:3 }}>{parseInline(lines[i].trim().slice(2))}</li>);
-        i++;
-      }
-      elements.push(<ul key={`ul-${i}`} style={{ margin:'4px 0', paddingLeft:18, display:'flex', flexDirection:'column', gap:2 }}>{items}</ul>);
-      continue;
-    }
-
-    // Normal paragraph
-    elements.push(<p key={i} style={{ margin:'2px 0', lineHeight:1.7 }}>{parseInline(trimmed)}</p>);
-    i++;
-  }
-  return <div style={{ fontSize:'.9rem', color: textColor }}>{elements}</div>;
-};
-  if (h < 12) return 'Good morning,';
-  if (h < 17) return 'Good afternoon,';
-  if (h < 21) return 'Good evening,';
-  return 'Good night,';
-};
-
-const formatTime = (ts) => {
-  if (!ts) return '';
-  const d = new Date(ts), now = new Date(), diff = (now - d) / 1000;
-  if (diff < 60) return 'Just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-};
-
-const storageKey   = (e) => `protonix_chats_${e || 'guest'}`;
-const loadChats    = (e) => { try { const r = localStorage.getItem(storageKey(e)); return r ? JSON.parse(r) : []; } catch { return []; } };
-const persistChats = (e, c) => { try { localStorage.setItem(storageKey(e), JSON.stringify(c)); } catch {} };
-
-const improveQuestion = async (text) => {
-  try {
-    const res = await fetch(`${API}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: `You are a prompt engineer. Rewrite the following message to be clearer, grammatically correct, and optimized to get the best possible AI response. Fix any spelling or grammar errors. Return ONLY the rewritten message, no explanation, no quotes:\n\n${text}`,
-        botId: 'deepseek',
-      }),
-    });
-    if (!res.ok) return text;
-
-    // Read SSE stream and collect all tokens
-    const reader  = res.body.getReader();
-    const decoder = new TextDecoder();
-    let   buffer  = '';
-    let   result  = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed.token) result += parsed.token;
-        } catch { /* skip */ }
-      }
-    }
-
-    return result.replace(/^["']|["']$/g, '').trim() || text;
-  } catch { return text; }
-};
+// ── Markdown renderer — converts **bold**, ### headers, - bullets, [1] citations ──;
 
 // ── Multi-Chat Modal ──────────────────────────────────────────────────────────
 const MultiChatModal = ({ bots, activeBots, onConfirm, onClose, dm }) => {
@@ -236,6 +122,122 @@ const ModelDropdown = ({ bots, selectedBot, onSelect, dm }) => {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 const ChatPage = ({ user, onLogout }) => {
+
+  // ── Markdown renderer (inside component so it has access to vars) ──
+  const renderMarkdown = (text, textColor, accentColor) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+
+  const parseInline = (str) => {
+    // Bold **text**
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, idx) => {
+      if (p.startsWith('**') && p.endsWith('**')) {
+        return <strong key={idx} style={{ fontWeight:700, color: textColor }}>{p.slice(2,-2)}</strong>;
+      }
+      // Citations [1][2] — style them small
+      return <span key={idx}>{p.replace(/\[\d+\]/g, m => '')}</span>;
+    });
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Empty line
+    if (!trimmed) { elements.push(<div key={i} style={{ height:6 }}/>); i++; continue; }
+
+    // ### Header
+    if (trimmed.startsWith('### ')) {
+      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'.92rem', color: accentColor }}>{trimmed.slice(4)}</p>);
+      i++; continue;
+    }
+    if (trimmed.startsWith('## ')) {
+      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'.95rem', color: accentColor }}>{trimmed.slice(3)}</p>);
+      i++; continue;
+    }
+    if (trimmed.startsWith('# ')) {
+      elements.push(<p key={i} style={{ margin:'10px 0 4px', fontWeight:800, fontSize:'1rem', color: accentColor }}>{trimmed.slice(2)}</p>);
+      i++; continue;
+    }
+
+    // Bullet - or *
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const items = [];
+      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
+        items.push(<li key={i} style={{ marginBottom:3 }}>{parseInline(lines[i].trim().slice(2))}</li>);
+        i++;
+      }
+      elements.push(<ul key={`ul-${i}`} style={{ margin:'4px 0', paddingLeft:18, display:'flex', flexDirection:'column', gap:2 }}>{items}</ul>);
+      continue;
+    }
+
+    // Normal paragraph
+    elements.push(<p key={i} style={{ margin:'2px 0', lineHeight:1.7 }}>{parseInline(trimmed)}</p>);
+    i++;
+  }
+  return <div style={{ fontSize:'.9rem', color: textColor }}>{elements}</div>;
+  };
+  if (h < 12) return 'Good morning,';
+  if (h < 17) return 'Good afternoon,';
+  if (h < 21) return 'Good evening,';
+  return 'Good night,';
+  };
+
+const formatTime = (ts) => {
+  if (!ts) return '';
+  const d = new Date(ts), now = new Date(), diff = (now - d) / 1000;
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+const storageKey   = (e) => `protonix_chats_${e || 'guest'}`;
+const loadChats    = (e) => { try { const r = localStorage.getItem(storageKey(e)); return r ? JSON.parse(r) : []; } catch { return []; } };
+const persistChats = (e, c) => { try { localStorage.setItem(storageKey(e), JSON.stringify(c)); } catch {} };
+
+const improveQuestion = async (text) => {
+  try {
+    const res = await fetch(`${API}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `You are a prompt engineer. Rewrite the following message to be clearer, grammatically correct, and optimized to get the best possible AI response. Fix any spelling or grammar errors. Return ONLY the rewritten message, no explanation, no quotes:\n\n${text}`,
+        botId: 'deepseek',
+      }),
+    });
+    if (!res.ok) return text;
+
+    // Read SSE stream and collect all tokens
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
+    let   result  = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.token) result += parsed.token;
+        } catch { /* skip */ }
+      }
+    }
+
+    return result.replace(/^["']|["']$/g, '').trim() || text;
+  } catch { return text; }
+}
   const navigate  = useNavigate();
   const userEmail = user?.email || '';
   const firstName = user?.fullName?.split(' ')[0] || userEmail.split('@')[0] || 'there';
