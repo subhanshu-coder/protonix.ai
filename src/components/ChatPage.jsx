@@ -581,7 +581,11 @@ const ChatPage = ({ user, onLogout }) => {
 
             try {
               const parsed = JSON.parse(payload);
-              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.error) {
+                setMessages(p => p.map(m => m.tempId === tempId
+                  ? { ...m, text: `⚠️ ${parsed.error}`, isLoading: false } : m));
+                return;
+              }
               const token = parsed.token;
               if (token) {
                 fullText += token;
