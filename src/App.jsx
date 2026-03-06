@@ -20,7 +20,7 @@ const Preloader = ({ onDone }) => {
   const startRef = useRef(null);
 
   useEffect(() => {
-    const DURATION = 3000;
+    const DURATION = 1200;
     const ease = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
 
     const tick = ts => {
@@ -32,8 +32,8 @@ const Preloader = ({ onDone }) => {
       } else {
         setTimeout(() => {
           setLeaving(true);
-          setTimeout(onDone, 650);
-        }, 320);
+          setTimeout(onDone, 400);
+        }, 100);
       }
     };
 

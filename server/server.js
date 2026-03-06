@@ -463,4 +463,15 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
 // START
 // ═══════════════════════════════════════════════════════════
 app.get('/', (req, res) => res.json({ status: 'ok', message: 'Protonix AI Backend Running' }));
-app.listen(port, () => console.log(`Protonix live on port ${port}`));
+app.listen(port, () => {
+  console.log(`Protonix live on port ${port}`);
+
+  // ── Keep-alive ping every 14 min — prevents Render free tier cold starts ──
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+  setInterval(async () => {
+    try {
+      await fetch(`${SELF_URL}/`);
+      console.log('Keep-alive ping sent');
+    } catch { /* ignore */ }
+  }, 14 * 60 * 1000); // 14 minutes
+});
