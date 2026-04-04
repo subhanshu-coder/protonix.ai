@@ -29,7 +29,9 @@ const allowedOrigins = [
   process.env.CLIENT_URL_ALT,
   'http://localhost:5173',
   'http://localhost:3000',
-  'http://127.0.0.1:5173',
+   'https://protonix-ai.onrender.com',
+  'https://protonixai.online',        // ← add this
+  'https://www.protonixai.online' 
 ].filter(Boolean);
 
 const corsOptions = {
